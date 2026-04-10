@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button, Flex, Text, TextArea } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import type { Argument } from "@/types/argument";
 import ArgumentCard from "./ArgumentCard";
+import PostForm from "./PostForm";
 
 export default function ArgumentFeed() {
   const { data: session } = useSession();
   const [arguments_, setArguments] = useState<Argument[]>([]);
-  const [draft, setDraft] = useState("");
+  const [showPostForm, setShowPostForm] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -23,50 +24,48 @@ export default function ArgumentFeed() {
     refresh();
   }, [refresh]);
 
-  async function handlePost() {
-    const content = draft.trim();
-    if (!content) return;
+  async function handlePost(content: string, imageUrl?: string) {
     await fetch("/api/arguments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, imageUrl }),
     });
-    setDraft("");
+    setShowPostForm(false);
     refresh();
   }
 
-  async function handleAddQuestion(argumentId: string, content: string) {
+  async function handleAddQuestion(argumentId: string, content: string, imageUrl?: string) {
     await fetch(`/api/arguments/${argumentId}/question`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, imageUrl }),
     });
     refresh();
   }
 
-  async function handleAddSupport(argumentId: string, content: string) {
+  async function handleAddSupport(argumentId: string, content: string, imageUrl?: string) {
     await fetch(`/api/arguments/${argumentId}/support`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, imageUrl }),
     });
     refresh();
   }
 
-  async function handleAddCounter(argumentId: string, content: string) {
+  async function handleAddCounter(argumentId: string, content: string, imageUrl?: string) {
     await fetch(`/api/arguments/${argumentId}/counter`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, imageUrl }),
     });
     refresh();
   }
 
-  async function handleAddReply(questionId: string, content: string) {
+  async function handleAddReply(questionId: string, content: string, imageUrl?: string) {
     await fetch(`/api/questions/${questionId}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, imageUrl }),
     });
     refresh();
   }
@@ -93,27 +92,28 @@ export default function ArgumentFeed() {
 
   return (
     <Flex direction="column" gap="4">
-      {isSignedIn ? (
-        <Flex direction="column" gap="2">
-          <TextArea
-            size="3"
+      {isSignedIn && (
+        showPostForm ? (
+          <PostForm
             placeholder="Post an argument..."
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.metaKey) handlePost();
-            }}
+            submitLabel="Post"
+            onSubmit={handlePost}
+            onCancel={() => setShowPostForm(false)}
           />
-          <Flex justify="end">
-            <Button size="2" onClick={handlePost} disabled={!draft.trim()}>
-              Post
-            </Button>
-          </Flex>
-        </Flex>
-      ) : (
-        <Text size="2" color="gray">
-          Sign in to post arguments.
-        </Text>
+        ) : (
+          <Text
+            size="3"
+            color="gray"
+            style={{ cursor: "pointer", padding: "12px 16px", border: "1px solid var(--gray-6)", borderRadius: 8 }}
+            onClick={() => setShowPostForm(true)}
+          >
+            Post an argument...
+          </Text>
+        )
+      )}
+
+      {!isSignedIn && (
+        <Text size="2" color="gray">Sign in to post arguments.</Text>
       )}
 
       {loading ? (

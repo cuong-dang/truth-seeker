@@ -15,6 +15,7 @@ model User {
   email         String?    @unique
   emailVerified DateTime?
   image         String?
+  passwordHash  String?
   accounts      Account[]
   sessions      Session[]
   arguments     Argument[]
@@ -71,6 +72,7 @@ enum ArgumentKind {
 model Argument {
   id       String       @id @default(cuid())
   content  String
+  imageUrl String?
   kind     ArgumentKind @default(ROOT)
 
   authorId String
@@ -107,8 +109,9 @@ model ArgumentVote {
 }
 
 model Question {
-  id      String @id @default(cuid())
-  content String
+  id       String  @id @default(cuid())
+  content  String
+  imageUrl String?
 
   authorId String
   author   User @relation(fields: [authorId], references: [id])

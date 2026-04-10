@@ -1,7 +1,7 @@
 "use client";
 
-import { useSession, signIn, signOut } from "next-auth/react";
-import { Avatar, Button, Flex, Text } from "@radix-ui/themes";
+import { useSession, signOut } from "next-auth/react";
+import { Avatar, Button, Flex, Link, Text } from "@radix-ui/themes";
 
 export default function AuthButton() {
   const { data: session, status } = useSession();
@@ -10,11 +10,18 @@ export default function AuthButton() {
 
   if (!session) {
     return (
-      <Button variant="outline" onClick={() => signIn("google")}>
-        Sign in with Google
-      </Button>
+      <Flex gap="2">
+        <Button variant="outline" asChild>
+          <a href="/login">Sign in</a>
+        </Button>
+        <Button asChild>
+          <a href="/signup">Sign up</a>
+        </Button>
+      </Flex>
     );
   }
+
+  const isEmailUser = session.user.provider === "credentials";
 
   return (
     <Flex align="center" gap="3">
@@ -27,6 +34,11 @@ export default function AuthButton() {
         />
         <Text size="2">{session.user?.name}</Text>
       </Flex>
+      {isEmailUser && (
+        <Link href="/settings" size="2">
+          Settings
+        </Link>
+      )}
       <Button variant="soft" color="gray" size="1" onClick={() => signOut()}>
         Sign out
       </Button>

@@ -9,6 +9,7 @@ export interface Author {
 export interface Argument {
   id: string;
   content: string;
+  imageUrl: string | null;
   kind: ArgumentKind;
   author: Author;
   createdAt: string;
@@ -22,6 +23,7 @@ export interface Argument {
 export interface Question {
   id: string;
   content: string;
+  imageUrl: string | null;
   author: Author;
   createdAt: string;
   score: number;

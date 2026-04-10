@@ -68,6 +68,7 @@ export async function getArgumentTree(userId?: string): Promise<Argument[]> {
     return {
       id: row.id,
       content: row.content,
+      imageUrl: row.imageUrl,
       kind: row.kind,
       author: row.author,
       createdAt: row.createdAt.toISOString(),
@@ -84,6 +85,7 @@ export async function getArgumentTree(userId?: string): Promise<Argument[]> {
     return {
       id: row.id,
       content: row.content,
+      imageUrl: row.imageUrl,
       author: row.author,
       createdAt: row.createdAt.toISOString(),
       score: qScores.get(row.id) ?? 0,
@@ -99,33 +101,33 @@ export async function getArgumentTree(userId?: string): Promise<Argument[]> {
     .reverse();
 }
 
-export async function createRootArgument(authorId: string, content: string) {
+export async function createRootArgument(authorId: string, content: string, imageUrl?: string) {
   return prisma.argument.create({
-    data: { content, kind: "ROOT", authorId },
+    data: { content, imageUrl, kind: "ROOT", authorId },
   });
 }
 
-export async function addSupport(parentId: string, authorId: string, content: string) {
+export async function addSupport(parentId: string, authorId: string, content: string, imageUrl?: string) {
   return prisma.argument.create({
-    data: { content, kind: "SUPPORT", authorId, parentId },
+    data: { content, imageUrl, kind: "SUPPORT", authorId, parentId },
   });
 }
 
-export async function addCounter(parentId: string, authorId: string, content: string) {
+export async function addCounter(parentId: string, authorId: string, content: string, imageUrl?: string) {
   return prisma.argument.create({
-    data: { content, kind: "COUNTER", authorId, parentId },
+    data: { content, imageUrl, kind: "COUNTER", authorId, parentId },
   });
 }
 
-export async function addQuestion(argumentId: string, authorId: string, content: string) {
+export async function addQuestion(argumentId: string, authorId: string, content: string, imageUrl?: string) {
   return prisma.question.create({
-    data: { content, authorId, argumentId },
+    data: { content, imageUrl, authorId, argumentId },
   });
 }
 
-export async function addReply(questionId: string, authorId: string, content: string) {
+export async function addReply(questionId: string, authorId: string, content: string, imageUrl?: string) {
   return prisma.argument.create({
-    data: { content, kind: "REPLY", authorId, questionId },
+    data: { content, imageUrl, kind: "REPLY", authorId, questionId },
   });
 }
 

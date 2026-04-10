@@ -13,11 +13,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { content } = await request.json();
+  const { content, imageUrl } = await request.json();
   if (!content?.trim()) {
     return Response.json({ error: "Content is required" }, { status: 400 });
   }
 
-  await createRootArgument(session.user.id, content.trim());
+  await createRootArgument(session.user.id, content.trim(), imageUrl);
   return Response.json({ ok: true }, { status: 201 });
 }

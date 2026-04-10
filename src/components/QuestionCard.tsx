@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text, TextArea,
+  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
 } from "@radix-ui/themes";
 import {
   CaretSortIcon, ChatBubbleIcon, Pencil2Icon,
@@ -10,16 +10,17 @@ import {
 } from "@radix-ui/react-icons";
 import type { Argument, Question } from "@/types/argument";
 import ArgumentCard from "./ArgumentCard";
+import PostForm from "./PostForm";
 
 type SortOrder = "votes" | "newest" | "oldest";
 
 interface QuestionCardProps {
   question: Question;
   isSignedIn: boolean;
-  onAddQuestion: (argumentId: string, content: string) => void;
-  onAddSupport: (argumentId: string, content: string) => void;
-  onAddCounter: (argumentId: string, content: string) => void;
-  onAddReply: (questionId: string, content: string) => void;
+  onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddReply: (questionId: string, content: string, imageUrl?: string) => void;
   onVoteArgument: (argumentId: string, value: number) => void;
   onVoteQuestion: (questionId: string, value: number) => void;
 }
@@ -51,13 +52,9 @@ export default function QuestionCard({
   const [repliesExpanded, setRepliesExpanded] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [draft, setDraft] = useState("");
 
-  function handleSubmit() {
-    const content = draft.trim();
-    if (!content) return;
-    onAddReply(question.id, content);
-    setDraft("");
+  function handleReplySubmit(content: string, imageUrl?: string) {
+    onAddReply(question.id, content, imageUrl);
     setShowReplyForm(false);
   }
 
@@ -95,6 +92,12 @@ export default function QuestionCard({
               Question
             </Badge>
             <Text size="2">{question.content}</Text>
+            {question.imageUrl && (
+              <Box style={{ borderRadius: 6, overflow: "hidden", maxWidth: 400 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={question.imageUrl} alt="" style={{ width: "100%", display: "block" }} />
+              </Box>
+            )}
             <Flex gap="4" align="center">
               <Flex gap="1" align="center">
                 <IconButton
@@ -130,10 +133,7 @@ export default function QuestionCard({
                   size="1"
                   variant={showReplyForm ? "solid" : "ghost"}
                   color="gray"
-                  onClick={() => {
-                    setShowReplyForm(!showReplyForm);
-                    setDraft("");
-                  }}
+                  onClick={() => setShowReplyForm(!showReplyForm)}
                 >
                   <Pencil2Icon />
                 </IconButton>
@@ -145,33 +145,12 @@ export default function QuestionCard({
 
       {showReplyForm && (
         <Box pl="4">
-          <Flex direction="column" gap="2">
-            <TextArea
-              size="2"
-              placeholder="Write a reply..."
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.metaKey) handleSubmit();
-              }}
-            />
-            <Flex justify="end" gap="2">
-              <Button
-                variant="soft"
-                color="gray"
-                size="1"
-                onClick={() => {
-                  setShowReplyForm(false);
-                  setDraft("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button size="1" onClick={handleSubmit} disabled={!draft.trim()}>
-                Reply
-              </Button>
-            </Flex>
-          </Flex>
+          <PostForm
+            placeholder="Write a reply..."
+            submitLabel="Reply"
+            onSubmit={handleReplySubmit}
+            onCancel={() => setShowReplyForm(false)}
+          />
         </Box>
       )}
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text, TextArea,
+  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
 } from "@radix-ui/themes";
 import {
   CaretSortIcon, CheckCircledIcon, CrossCircledIcon, ListBulletIcon,
@@ -10,6 +10,7 @@ import {
 } from "@radix-ui/react-icons";
 import type { Argument, ArgumentKind, Question } from "@/types/argument";
 import QuestionCard from "./QuestionCard";
+import PostForm from "./PostForm";
 
 type FormType = "question" | "support" | "counter";
 type Section = "questions" | "supports" | "counters" | "all";
@@ -18,10 +19,10 @@ type SortOrder = "votes" | "newest" | "oldest";
 interface ArgumentCardProps {
   argument: Argument;
   isSignedIn: boolean;
-  onAddQuestion: (argumentId: string, content: string) => void;
-  onAddSupport: (argumentId: string, content: string) => void;
-  onAddCounter: (argumentId: string, content: string) => void;
-  onAddReply: (questionId: string, content: string) => void;
+  onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddReply: (questionId: string, content: string, imageUrl?: string) => void;
   onVoteArgument: (argumentId: string, value: number) => void;
   onVoteQuestion: (questionId: string, value: number) => void;
 }
@@ -97,26 +98,15 @@ export default function ArgumentCard({
   const [expanded, setExpanded] = useState<Section | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [activeForm, setActiveForm] = useState<FormType | null>(null);
-  const [draft, setDraft] = useState("");
 
   function toggleSection(section: Section) {
     setExpanded((prev) => (prev === section ? null : section));
   }
 
-  function openForm(type: FormType) {
-    setActiveForm(type);
-    setDraft("");
-  }
-
-  function handleSubmit() {
-    const content = draft.trim();
-    if (!content || !activeForm) return;
-
-    if (activeForm === "question") onAddQuestion(argument.id, content);
-    else if (activeForm === "support") onAddSupport(argument.id, content);
-    else if (activeForm === "counter") onAddCounter(argument.id, content);
-
-    setDraft("");
+  function handleFormSubmit(content: string, imageUrl?: string) {
+    if (activeForm === "question") onAddQuestion(argument.id, content, imageUrl);
+    else if (activeForm === "support") onAddSupport(argument.id, content, imageUrl);
+    else if (activeForm === "counter") onAddCounter(argument.id, content, imageUrl);
     setActiveForm(null);
   }
 
@@ -158,6 +148,12 @@ export default function ArgumentCard({
               </Badge>
             )}
             <Text size="3">{argument.content}</Text>
+            {argument.imageUrl && (
+              <Box style={{ borderRadius: 6, overflow: "hidden", maxWidth: 400 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={argument.imageUrl} alt="" style={{ width: "100%", display: "block" }} />
+              </Box>
+            )}
             <Flex gap="4" align="center">
               <Flex gap="1" align="center">
                 <IconButton
@@ -235,13 +231,13 @@ export default function ArgumentCard({
                     </IconButton>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content size="1">
-                    <DropdownMenu.Item color="purple" onClick={() => openForm("question")}>
+                    <DropdownMenu.Item color="purple" onClick={() => setActiveForm("question")}>
                       Question
                     </DropdownMenu.Item>
-                    <DropdownMenu.Item color="green" onClick={() => openForm("support")}>
+                    <DropdownMenu.Item color="green" onClick={() => setActiveForm("support")}>
                       Support
                     </DropdownMenu.Item>
-                    <DropdownMenu.Item color="red" onClick={() => openForm("counter")}>
+                    <DropdownMenu.Item color="red" onClick={() => setActiveForm("counter")}>
                       Counter
                     </DropdownMenu.Item>
                   </DropdownMenu.Content>
@@ -254,33 +250,12 @@ export default function ArgumentCard({
 
       {activeForm && (
         <Box pl="4">
-          <Flex direction="column" gap="2">
-            <TextArea
-              size="2"
-              placeholder={formPlaceholders[activeForm]}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.metaKey) handleSubmit();
-              }}
-            />
-            <Flex justify="end" gap="2">
-              <Button
-                variant="soft"
-                color="gray"
-                size="1"
-                onClick={() => {
-                  setActiveForm(null);
-                  setDraft("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button size="1" onClick={handleSubmit} disabled={!draft.trim()}>
-                Submit
-              </Button>
-            </Flex>
-          </Flex>
+          <PostForm
+            placeholder={formPlaceholders[activeForm]}
+            submitLabel="Submit"
+            onSubmit={handleFormSubmit}
+            onCancel={() => setActiveForm(null)}
+          />
         </Box>
       )}
 

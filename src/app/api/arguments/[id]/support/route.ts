@@ -11,11 +11,11 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { content } = await request.json();
+  const { content, imageUrl } = await request.json();
   if (!content?.trim()) {
     return Response.json({ error: "Content is required" }, { status: 400 });
   }
 
-  await addSupport(id, session.user.id, content.trim());
+  await addSupport(id, session.user.id, content.trim(), imageUrl);
   return Response.json({ ok: true }, { status: 201 });
 }
