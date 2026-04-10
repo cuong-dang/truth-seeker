@@ -9,6 +9,7 @@ import {
   Pencil2Icon, QuestionMarkCircledIcon, ThickArrowDownIcon, ThickArrowUpIcon,
 } from "@radix-ui/react-icons";
 import type { Argument, ArgumentKind, Question } from "@/types/argument";
+import { timeAgo } from "@/lib/timeAgo";
 
 // Count all nested replies across the entire subtree
 function deepReplyCount(arg: Argument): number {
@@ -167,6 +168,8 @@ export default function ArgumentCard({
                 fallback={argument.author.name?.[0] ?? "?"}
               />
               <Text size="1" color="gray">{argument.author.name}</Text>
+              <Text size="1" color="gray">·</Text>
+              <Text size="1" color="gray">{timeAgo(argument.createdAt)}</Text>
             </Flex>
             <Text size="3">{argument.content}</Text>
             {argument.imageUrl && (

@@ -9,6 +9,7 @@ import {
   ThickArrowDownIcon, ThickArrowUpIcon,
 } from "@radix-ui/react-icons";
 import type { Argument, Question } from "@/types/argument";
+import { timeAgo } from "@/lib/timeAgo";
 import ArgumentCard from "./ArgumentCard";
 
 function deepReplyCount(arg: Argument): number {
@@ -116,6 +117,8 @@ export default function QuestionCard({
                 fallback={question.author.name?.[0] ?? "?"}
               />
               <Text size="1" color="gray">{question.author.name}</Text>
+              <Text size="1" color="gray">·</Text>
+              <Text size="1" color="gray">{timeAgo(question.createdAt)}</Text>
             </Flex>
             <Text size="2">{question.content}</Text>
             {question.imageUrl && (
