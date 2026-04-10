@@ -77,5 +77,7 @@ export async function uploadImage(file: File): Promise<string> {
     })
   );
 
-  return `${process.env.S3_ENDPOINT}/${BUCKET}/${key}`;
+  // S3_PUBLIC_URL is the browser-accessible base URL (differs from API endpoint on R2)
+  const publicBase = process.env.S3_PUBLIC_URL || `${process.env.S3_ENDPOINT}/${BUCKET}`;
+  return `${publicBase}/${key}`;
 }

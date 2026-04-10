@@ -83,7 +83,8 @@ async function upload(filename: string): Promise<string> {
     })
   );
 
-  const url = `${process.env.S3_ENDPOINT}/${BUCKET}/${key}`;
+  const publicBase = process.env.S3_PUBLIC_URL || `${process.env.S3_ENDPOINT}/${BUCKET}`;
+  const url = `${publicBase}/${key}`;
   uploadCache.set(filename, url);
   console.log(`  ✓ uploaded ${filename} (${(body.length / 1024).toFixed(0)}KB)`);
   return url;
