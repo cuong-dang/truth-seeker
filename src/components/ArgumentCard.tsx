@@ -15,7 +15,7 @@ import PostForm from "./PostForm";
 
 type FormType = "question" | "support" | "counter";
 type Section = "questions" | "supports" | "counters" | "nested";
-type SortOrder = "votes" | "newest" | "oldest";
+type SortOrder = "votes" | "newest" | "oldest" | "replies";
 
 const PAGE_SIZE = 10;
 
@@ -56,13 +56,15 @@ const formPlaceholders: Record<FormType, string> = {
 
 const sortLabels: Record<SortOrder, string> = {
   votes: "Top voted",
-  newest: "Newest first",
-  oldest: "Oldest first",
+  newest: "Newest",
+  oldest: "Oldest",
+  replies: "Most replies",
 };
 
 function sortArguments(args: Argument[], sort: SortOrder): Argument[] {
   return [...args].sort((a, b) => {
     if (sort === "votes") return b.score - a.score;
+    if (sort === "replies") return b.totalReplyCount - a.totalReplyCount;
     if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
     return a.createdAt.localeCompare(b.createdAt);
   });
@@ -71,6 +73,7 @@ function sortArguments(args: Argument[], sort: SortOrder): Argument[] {
 function sortQuestions(qs: Question[], sort: SortOrder): Question[] {
   return [...qs].sort((a, b) => {
     if (sort === "votes") return b.score - a.score;
+    if (sort === "replies") return b.totalReplyCount - a.totalReplyCount;
     if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
     return a.createdAt.localeCompare(b.createdAt);
   });
@@ -292,9 +295,10 @@ export default function ArgumentCard({
                     </Button>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content size="1">
+                    <DropdownMenu.Item onClick={() => setSortOrder("newest")}>Newest</DropdownMenu.Item>
+                    <DropdownMenu.Item onClick={() => setSortOrder("oldest")}>Oldest</DropdownMenu.Item>
                     <DropdownMenu.Item onClick={() => setSortOrder("votes")}>Top voted</DropdownMenu.Item>
-                    <DropdownMenu.Item onClick={() => setSortOrder("newest")}>Newest first</DropdownMenu.Item>
-                    <DropdownMenu.Item onClick={() => setSortOrder("oldest")}>Oldest first</DropdownMenu.Item>
+                    <DropdownMenu.Item onClick={() => setSortOrder("replies")}>Most replies</DropdownMenu.Item>
                   </DropdownMenu.Content>
                 </DropdownMenu.Root>
               )}

@@ -269,11 +269,24 @@ function questionToDeep(q: FullQuestion): Question {
 
 // ─── Public API ──────────────────────────────────
 
-export async function getRootArguments(userId?: string, skip = 0, limit = 10) {
+export type FeedSort = "newest" | "oldest" | "votes" | "replies";
+
+export async function getRootArguments(userId?: string, skip = 0, limit = 10, sort: FeedSort = "newest") {
+  // "votes" sort requires a join — handled separately
+  if (sort === "votes") {
+    return getRootArgumentsByVotes(userId, skip, limit);
+  }
+
+  const orderBy = sort === "replies"
+    ? { replyCount: "desc" as const }
+    : sort === "newest"
+      ? { createdAt: "desc" as const }
+      : { createdAt: "asc" as const };
+
   const [rootRows, total] = await Promise.all([
     prisma.argument.findMany({
       where: { kind: "ROOT" },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip,
       take: limit,
       include: { author: { select: authorSelect } },
@@ -306,30 +319,6 @@ export async function getRootArguments(userId?: string, skip = 0, limit = 10) {
     if (userId && v.userId === userId) userVoteMap.set(v.argumentId, v.value);
   }
 
-  // Compute totalReplyCount per root via recursive CTE
-  // Single recursive term using a UNION inside a subquery joined to the tree
-  const totalReplyCounts = await Promise.all(
-    rootIds.map(async (id: string) => {
-      const result = await prisma.$queryRaw<[{ count: bigint }]>`
-        WITH RECURSIVE tree AS (
-          SELECT ${id}::text AS nid
-          UNION
-          SELECT child.nid FROM (
-            SELECT a.id::text AS nid, a."parentId"::text AS pid FROM "Argument" a WHERE a."parentId" IS NOT NULL
-            UNION ALL
-            SELECT a.id::text AS nid, a."questionId"::text AS pid FROM "Argument" a WHERE a."questionId" IS NOT NULL
-            UNION ALL
-            SELECT q.id::text AS nid, q."argumentId"::text AS pid FROM "Question" q
-          ) child
-          INNER JOIN tree t ON child.pid = t.nid
-        )
-        SELECT COUNT(*) - 1 AS count FROM tree
-      `;
-      return { id, count: Number(result[0].count) };
-    })
-  );
-  const totalReplyMap = new Map(totalReplyCounts.map((r: { id: string; count: number }) => [r.id, r.count]));
-
   const arguments_: Argument[] = rootRows.map((row: typeof rootRows[number]) => ({
     id: row.id,
     content: row.content,
@@ -343,7 +332,76 @@ export async function getRootArguments(userId?: string, skip = 0, limit = 10) {
     questionCount: qCountMap.get(row.id) ?? 0,
     supportCount: sCountMap.get(row.id) ?? 0,
     counterCount: cCountMap.get(row.id) ?? 0,
-    totalReplyCount: totalReplyMap.get(row.id) ?? 0,
+    totalReplyCount: row.replyCount,
+    questions: [],
+    supports: [],
+    counters: [],
+  }));
+
+  return { arguments: arguments_, total };
+}
+
+async function getRootArgumentsByVotes(userId?: string, skip = 0, limit = 10) {
+  const total = await prisma.argument.count({ where: { kind: "ROOT" } });
+
+  // Get root IDs sorted by vote score via SQL
+  const rankedRows = await prisma.$queryRaw<{ id: string; score: bigint }[]>`
+    SELECT a.id, COALESCE(SUM(v.value), 0) AS score
+    FROM "Argument" a
+    LEFT JOIN "ArgumentVote" v ON v."argumentId" = a.id
+    WHERE a.kind = 'ROOT'
+    GROUP BY a.id
+    ORDER BY score DESC, a."createdAt" DESC
+    OFFSET ${skip}
+    LIMIT ${limit}
+  `;
+
+  const rootIds = rankedRows.map((r) => r.id);
+  if (rootIds.length === 0) return { arguments: [] as Argument[], total };
+
+  const rootRows = await prisma.argument.findMany({
+    where: { id: { in: rootIds } },
+    include: { author: { select: authorSelect } },
+  });
+
+  // Preserve score sort order
+  const rowMap = new Map(rootRows.map((r: typeof rootRows[number]) => [r.id, r]));
+  const orderedRows = rootIds.map((id: string) => rowMap.get(id)!).filter(Boolean);
+  const scoreMap = new Map(rankedRows.map((r: { id: string; score: bigint }) => [r.id, Number(r.score)]));
+
+  const [questionCounts, supportCounts, counterCounts] = await Promise.all([
+    prisma.question.groupBy({ by: ["argumentId"], where: { argumentId: { in: rootIds } }, _count: true }),
+    prisma.argument.groupBy({ by: ["parentId"], where: { parentId: { in: rootIds }, kind: "SUPPORT" }, _count: true }),
+    prisma.argument.groupBy({ by: ["parentId"], where: { parentId: { in: rootIds }, kind: "COUNTER" }, _count: true }),
+  ]);
+
+  const qCountMap = new Map(questionCounts.map((r: { argumentId: string; _count: number }) => [r.argumentId, r._count]));
+  const sCountMap = new Map(supportCounts.map((r: { parentId: string | null; _count: number }) => [r.parentId!, r._count]));
+  const cCountMap = new Map(counterCounts.map((r: { parentId: string | null; _count: number }) => [r.parentId!, r._count]));
+
+  // User votes
+  const userVoteMap = new Map<string, number>();
+  if (userId) {
+    const userVotes = await prisma.argumentVote.findMany({
+      where: { argumentId: { in: rootIds }, userId },
+    });
+    for (const v of userVotes) userVoteMap.set(v.argumentId, v.value);
+  }
+
+  const arguments_: Argument[] = orderedRows.map((row: typeof rootRows[number]) => ({
+    id: row.id,
+    content: row.content,
+    imageUrl: row.imageUrl,
+    kind: row.kind,
+    tag: row.tag,
+    author: row.author,
+    createdAt: row.createdAt.toISOString(),
+    score: scoreMap.get(row.id) ?? 0,
+    userVote: userVoteMap.get(row.id) ?? null,
+    questionCount: qCountMap.get(row.id) ?? 0,
+    supportCount: sCountMap.get(row.id) ?? 0,
+    counterCount: cCountMap.get(row.id) ?? 0,
+    totalReplyCount: row.replyCount,
     questions: [],
     supports: [],
     counters: [],
@@ -403,6 +461,29 @@ export async function getFullSubtree(argumentId: string, userId?: string): Promi
 
 // ─── Mutations ───────────────────────────────────
 
+// Walk up the tree from an argument, incrementing replyCount on every ancestor argument
+async function incrementAncestorCounts(argumentId: string) {
+  // Use a recursive CTE to find all ancestor argument IDs, then increment them all
+  await prisma.$executeRaw`
+    WITH RECURSIVE ancestors AS (
+      SELECT ${argumentId}::text AS nid
+      UNION
+      SELECT parent.pid FROM (
+        SELECT a.id::text AS cid, a."parentId"::text AS pid FROM "Argument" a WHERE a."parentId" IS NOT NULL
+        UNION ALL
+        SELECT a.id::text AS cid, q."argumentId"::text AS pid FROM "Argument" a
+          INNER JOIN "Question" q ON a."questionId" = q.id
+        UNION ALL
+        SELECT q.id::text AS cid, q."argumentId"::text AS pid FROM "Question" q
+      ) parent
+      INNER JOIN ancestors a ON parent.cid = a.nid
+    )
+    UPDATE "Argument" SET "replyCount" = "replyCount" + 1
+    WHERE id IN (SELECT nid FROM ancestors)
+    AND id != ${argumentId}
+  `;
+}
+
 export async function createRootArgument(authorId: string, content: string, imageUrl?: string, tag?: string) {
   return prisma.argument.create({
     data: { content, imageUrl, kind: "ROOT", authorId, tag: tag as any },
@@ -410,27 +491,41 @@ export async function createRootArgument(authorId: string, content: string, imag
 }
 
 export async function addSupport(parentId: string, authorId: string, content: string, imageUrl?: string) {
-  return prisma.argument.create({
+  const created = await prisma.argument.create({
     data: { content, imageUrl, kind: "SUPPORT", authorId, parentId },
   });
+  await incrementAncestorCounts(created.id);
+  return created;
 }
 
 export async function addCounter(parentId: string, authorId: string, content: string, imageUrl?: string) {
-  return prisma.argument.create({
+  const created = await prisma.argument.create({
     data: { content, imageUrl, kind: "COUNTER", authorId, parentId },
   });
+  await incrementAncestorCounts(created.id);
+  return created;
 }
 
 export async function addQuestion(argumentId: string, authorId: string, content: string, imageUrl?: string) {
-  return prisma.question.create({
+  const created = await prisma.question.create({
     data: { content, imageUrl, authorId, argumentId },
   });
+  // Questions aren't arguments, but they still count as replies to their parent argument
+  await prisma.argument.update({
+    where: { id: argumentId },
+    data: { replyCount: { increment: 1 } },
+  });
+  // Also increment all ancestors above the parent argument
+  await incrementAncestorCounts(argumentId);
+  return created;
 }
 
 export async function addReply(questionId: string, authorId: string, content: string, imageUrl?: string) {
-  return prisma.argument.create({
+  const created = await prisma.argument.create({
     data: { content, imageUrl, kind: "REPLY", authorId, questionId },
   });
+  await incrementAncestorCounts(created.id);
+  return created;
 }
 
 export async function voteOnArgument(argumentId: string, userId: string, value: number) {

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Flex, Text } from "@radix-ui/themes";
+import { Button, DropdownMenu, Flex, Text } from "@radix-ui/themes";
+import { CaretSortIcon } from "@radix-ui/react-icons";
 import type { Argument, Tag } from "@/types/argument";
 import ArgumentCard from "./ArgumentCard";
 import TagSidebar from "./TagSidebar";
@@ -15,28 +16,29 @@ export default function ArgumentFeed() {
   const [arguments_, setArguments] = useState<Argument[]>([]);
   const [total, setTotal] = useState(0);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "votes" | "replies">("newest");
   const [showPostForm, setShowPostForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const fetchPage = useCallback(async (skip: number, append: boolean) => {
-    const res = await fetch(`/api/arguments?skip=${skip}&limit=${PAGE_SIZE}`);
+  // Fetch a page of root arguments
+  const fetchPage = useCallback(async (skip: number, sort: string) => {
+    const res = await fetch(`/api/arguments?skip=${skip}&limit=${PAGE_SIZE}&sort=${sort}`);
     const data = await res.json();
-    if (append) {
-      setArguments((prev) => [...prev, ...data.arguments]);
-    } else {
-      setArguments(data.arguments);
-    }
+    setArguments((prev) => skip === 0 ? data.arguments : [...prev, ...data.arguments]);
     setTotal(data.total);
     setLoading(false);
     setLoadingMore(false);
   }, []);
 
-  // Initial load
+  // Initial load + reload on sort change
   useEffect(() => {
-    fetchPage(0, false);
-  }, [fetchPage]);
+    setLoading(true);
+    setArguments([]);
+    setTotal(0);
+    fetchPage(0, sortOrder);
+  }, [fetchPage, sortOrder]);
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -45,9 +47,9 @@ export default function ArgumentFeed() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && arguments_.length < total && !loadingMore) {
+        if (entries[0].isIntersecting && arguments_.length > 0 && arguments_.length < total && !loadingMore && !loading) {
           setLoadingMore(true);
-          fetchPage(arguments_.length, true);
+          fetchPage(arguments_.length, sortOrder);
         }
       },
       { threshold: 0.1 }
@@ -55,15 +57,15 @@ export default function ArgumentFeed() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [arguments_.length, total, loadingMore, fetchPage]);
+  }, [arguments_.length, total, loadingMore, loading, fetchPage, sortOrder]);
 
   // Refresh reloads everything currently loaded
   const refresh = useCallback(async () => {
-    const res = await fetch(`/api/arguments?skip=0&limit=${Math.max(arguments_.length, PAGE_SIZE)}`);
+    const res = await fetch(`/api/arguments?skip=0&limit=${Math.max(arguments_.length, PAGE_SIZE)}&sort=${sortOrder}`);
     const data = await res.json();
     setArguments(data.arguments);
     setTotal(data.total);
-  }, [arguments_.length]);
+  }, [arguments_.length, sortOrder]);
 
   async function handlePost(content: string, imageUrl?: string, tag?: Tag) {
     await fetch("/api/arguments", {
@@ -174,6 +176,23 @@ export default function ArgumentFeed() {
         {!isSignedIn && (
           <Text size="2" color="gray">Sign in to post arguments.</Text>
         )}
+
+        <Flex justify="end">
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <Button variant="ghost" color="gray" size="2">
+                <CaretSortIcon />
+                {{ newest: "Newest", oldest: "Oldest", votes: "Top voted", replies: "Most replies" }[sortOrder]}
+              </Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content size="1">
+              <DropdownMenu.Item onClick={() => setSortOrder("newest")}>Newest</DropdownMenu.Item>
+              <DropdownMenu.Item onClick={() => setSortOrder("oldest")}>Oldest</DropdownMenu.Item>
+              <DropdownMenu.Item onClick={() => setSortOrder("votes")}>Top voted</DropdownMenu.Item>
+              <DropdownMenu.Item onClick={() => setSortOrder("replies")}>Most replies</DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+        </Flex>
 
         {loading ? (
           <Text size="2" color="gray">Loading...</Text>

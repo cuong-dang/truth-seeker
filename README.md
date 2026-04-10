@@ -6,7 +6,7 @@ Post an argument. Question it, support it, or counter it. One point per post.
 
 ## How it was built
 
-This project was created from scratch in half a day using [Claude Code](https://claude.ai/claude-code). All ideas, product decisions, and direction are mine — Claude wrote every single line of code.
+This project was created from scratch less than a day using [Claude Code](https://claude.ai/claude-code). All ideas, product decisions, and direction are mine — Claude wrote every single line of code.
 
 ## Stack
 

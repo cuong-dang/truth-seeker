@@ -13,7 +13,7 @@ import { timeAgo } from "@/lib/timeAgo";
 import ArgumentCard from "./ArgumentCard";
 import PostForm from "./PostForm";
 
-type SortOrder = "votes" | "newest" | "oldest";
+type SortOrder = "votes" | "newest" | "oldest" | "replies";
 
 const PAGE_SIZE = 10;
 
@@ -30,13 +30,15 @@ interface QuestionCardProps {
 
 const sortLabels: Record<SortOrder, string> = {
   votes: "Top voted",
-  newest: "Newest first",
-  oldest: "Oldest first",
+  newest: "Newest",
+  oldest: "Oldest",
+  replies: "Most replies",
 };
 
 function sortReplies(replies: Argument[], sort: SortOrder): Argument[] {
   return [...replies].sort((a, b) => {
     if (sort === "votes") return b.score - a.score;
+    if (sort === "replies") return b.totalReplyCount - a.totalReplyCount;
     if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
     return a.createdAt.localeCompare(b.createdAt);
   });
@@ -159,9 +161,10 @@ export default function QuestionCard({
                     </Button>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content size="1">
-                    <DropdownMenu.Item onClick={() => setSortOrder("votes")}>Top voted</DropdownMenu.Item>
                     <DropdownMenu.Item onClick={() => setSortOrder("newest")}>Newest first</DropdownMenu.Item>
                     <DropdownMenu.Item onClick={() => setSortOrder("oldest")}>Oldest first</DropdownMenu.Item>
+                    <DropdownMenu.Item onClick={() => setSortOrder("votes")}>Top voted</DropdownMenu.Item>
+                    <DropdownMenu.Item onClick={() => setSortOrder("replies")}>Most replies</DropdownMenu.Item>
                   </DropdownMenu.Content>
                 </DropdownMenu.Root>
               )}

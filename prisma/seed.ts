@@ -1017,6 +1017,32 @@ async function main() {
     }
   }
 
+  // ─── Compute replyCount for all arguments ───────
+  // Use a recursive CTE per root to set the denormalized count
+  console.log("Computing reply counts...");
+  const allArgsFull = await prisma.argument.findMany({ select: { id: true } });
+  for (const a of allArgsFull) {
+    const result = await prisma.$queryRaw<[{ count: bigint }]>`
+      WITH RECURSIVE tree AS (
+        SELECT ${a.id}::text AS nid
+        UNION
+        SELECT child.nid FROM (
+          SELECT a.id::text AS nid, a."parentId"::text AS pid FROM "Argument" a WHERE a."parentId" IS NOT NULL
+          UNION ALL
+          SELECT a.id::text AS nid, a."questionId"::text AS pid FROM "Argument" a WHERE a."questionId" IS NOT NULL
+          UNION ALL
+          SELECT q.id::text AS nid, q."argumentId"::text AS pid FROM "Question" q
+        ) child
+        INNER JOIN tree t ON child.pid = t.nid
+      )
+      SELECT COUNT(*) - 1 AS count FROM tree
+    `;
+    await prisma.argument.update({
+      where: { id: a.id },
+      data: { replyCount: Number(result[0].count) },
+    });
+  }
+
   const argCount = allArgs.length;
   const qCount = allQs.length;
   console.log(

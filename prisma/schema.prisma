@@ -84,8 +84,9 @@ model Argument {
   id       String       @id @default(cuid())
   content  String
   imageUrl String?
-  kind     ArgumentKind @default(ROOT)
-  tag      Tag?
+  kind       ArgumentKind @default(ROOT)
+  tag        Tag?
+  replyCount Int          @default(0)
 
   authorId String
   author   User @relation(fields: [authorId], references: [id])
