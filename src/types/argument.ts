@@ -1,5 +1,9 @@
 export type ArgumentKind = "ROOT" | "SUPPORT" | "COUNTER" | "REPLY";
 
+export type Tag = "NEWS" | "TECH" | "EDUCATION" | "POLITICS" | "RELIGION" | "GAMING" | "SPORTS" | "ENTERTAINMENT";
+
+export const ALL_TAGS: Tag[] = ["NEWS", "TECH", "EDUCATION", "POLITICS", "RELIGION", "GAMING", "SPORTS", "ENTERTAINMENT"];
+
 export interface Author {
   id: string;
   name: string | null;
@@ -11,6 +15,7 @@ export interface Argument {
   content: string;
   imageUrl: string | null;
   kind: ArgumentKind;
+  tag: Tag | null;
   author: Author;
   createdAt: string;
   score: number;

@@ -204,7 +204,7 @@ async function main() {
     content: string,
     authorId: string,
     kind: "ROOT" | "SUPPORT" | "COUNTER" | "REPLY" = "ROOT",
-    opts: { parentId?: string; questionId?: string; imageUrl?: string } = {}
+    opts: { parentId?: string; questionId?: string; imageUrl?: string; tag?: "NEWS" | "TECH" | "EDUCATION" | "POLITICS" | "RELIGION" | "GAMING" | "SPORTS" | "ENTERTAINMENT" } = {}
   ) =>
     prisma.argument.create({
       data: { content, kind, authorId, ...opts },
@@ -222,7 +222,7 @@ async function main() {
     "AI will not cause mass unemployment — it will shift labor demand toward supervision, maintenance, and creative roles, just like every previous technological revolution.",
     alice.id,
     "ROOT",
-    { imageUrl: urls.fanucRobot }
+    { imageUrl: urls.fanucRobot, tag: "TECH" }
   );
 
   const aiQ1 = await q(
@@ -262,7 +262,8 @@ async function main() {
   const ubi = await arg(
     "Universal basic income is the most efficient form of welfare because it eliminates bureaucratic overhead and lets individuals decide what they need most.",
     james.id,
-    "ROOT"
+    "ROOT",
+    { tag: "POLITICS" }
   );
 
   const ubiQ1 = await q(
@@ -308,7 +309,8 @@ async function main() {
   const religion = await arg(
     "Comparative religion should be a required subject in public schools because understanding different belief systems reduces prejudice and improves critical thinking.",
     omar.id,
-    "ROOT"
+    "ROOT",
+    { tag: "RELIGION" }
   );
 
   const relQ1 = await q(
@@ -350,7 +352,7 @@ async function main() {
     "Single-payer healthcare would save the US money overall because administrative costs consume 34% of US healthcare spending vs. 17% in Canada's single-payer system.",
     sarah.id,
     "ROOT",
-    { imageUrl: urls.healthCost }
+    { imageUrl: urls.healthCost, tag: "NEWS" }
   );
 
   const healthQ1 = await q(
@@ -397,7 +399,8 @@ async function main() {
   const social = await arg(
     "Social media platforms should be legally required to verify users are 16+ because adolescent brains are neurologically vulnerable to the dopamine-driven feedback loops these platforms are designed around.",
     emma.id,
-    "ROOT"
+    "ROOT",
+    { tag: "TECH" }
   );
 
   const socialQ1 = await q(
@@ -444,7 +447,7 @@ async function main() {
     "Nuclear energy is the only proven technology that can provide carbon-free baseload power at the scale needed to replace fossil fuels.",
     david.id,
     "ROOT",
-    { imageUrl: urls.nuclearPlant }
+    { imageUrl: urls.nuclearPlant, tag: "NEWS" }
   );
 
   const nucQ1 = await q(
@@ -485,7 +488,8 @@ async function main() {
   const college = await arg(
     "A four-year college degree is no longer worth the cost for most students because the average graduate carries $30k in debt for a credential that many employers no longer require.",
     marcus.id,
-    "ROOT"
+    "ROOT",
+    { tag: "EDUCATION" }
   );
 
   const collQ1 = await q(
@@ -526,7 +530,7 @@ async function main() {
     "Bitcoin will never function as a currency because its fixed supply makes it deflationary — people hoard it instead of spending it, which is the opposite of what a currency needs to do.",
     james.id,
     "ROOT",
-    { imageUrl: urls.bitcoin }
+    { imageUrl: urls.bitcoin, tag: "TECH" }
   );
 
   const cryptoQ1 = await q(
@@ -566,7 +570,8 @@ async function main() {
   const speech = await arg(
     "Private platforms moderating content is not censorship. The First Amendment protects you from government restrictions, not from a company's terms of service.",
     priya.id,
-    "ROOT"
+    "ROOT",
+    { tag: "POLITICS" }
   );
 
   const speechQ1 = await q(
@@ -606,7 +611,8 @@ async function main() {
   const mental = await arg(
     "Employers should be legally required to provide mental health days separate from sick leave because treating burnout after the fact costs 3x more than prevention.",
     sarah.id,
-    "ROOT"
+    "ROOT",
+    { tag: "NEWS" }
   );
 
   const mentalQ1 = await q(

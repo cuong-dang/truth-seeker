@@ -62,6 +62,17 @@ model VerificationToken {
 
 // ─── App models ──────────────────────────────────
 
+enum Tag {
+  NEWS
+  TECH
+  EDUCATION
+  POLITICS
+  RELIGION
+  GAMING
+  SPORTS
+  ENTERTAINMENT
+}
+
 enum ArgumentKind {
   ROOT
   SUPPORT
@@ -74,6 +85,7 @@ model Argument {
   content  String
   imageUrl String?
   kind     ArgumentKind @default(ROOT)
+  tag      Tag?
 
   authorId String
   author   User @relation(fields: [authorId], references: [id])

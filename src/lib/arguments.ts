@@ -70,6 +70,7 @@ export async function getArgumentTree(userId?: string): Promise<Argument[]> {
       content: row.content,
       imageUrl: row.imageUrl,
       kind: row.kind,
+      tag: row.tag,
       author: row.author,
       createdAt: row.createdAt.toISOString(),
       score: argScores.get(row.id) ?? 0,
@@ -101,9 +102,9 @@ export async function getArgumentTree(userId?: string): Promise<Argument[]> {
     .reverse();
 }
 
-export async function createRootArgument(authorId: string, content: string, imageUrl?: string) {
+export async function createRootArgument(authorId: string, content: string, imageUrl?: string, tag?: string) {
   return prisma.argument.create({
-    data: { content, imageUrl, kind: "ROOT", authorId },
+    data: { content, imageUrl, kind: "ROOT", authorId, tag: tag as any },
   });
 }
 

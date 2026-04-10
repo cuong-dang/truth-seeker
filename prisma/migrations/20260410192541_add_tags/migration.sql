@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "Tag" AS ENUM ('NEWS', 'TECH', 'EDUCATION', 'POLITICS', 'RELIGION', 'GAMING', 'SPORTS', 'ENTERTAINMENT');
+
+-- AlterTable
+ALTER TABLE "Argument" ADD COLUMN     "tag" "Tag";

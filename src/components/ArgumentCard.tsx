@@ -22,6 +22,39 @@ function deepReplyCount(arg: Argument): number {
   for (const c of arg.counters) count += deepReplyCount(c);
   return count;
 }
+
+function deepQuestionReplyCount(q: Question): number {
+  let count = q.replies.length;
+  for (const r of q.replies) count += deepReplyCount(r);
+  return count;
+}
+
+// For root posts with >= 10 replies, find level-1 children with >= 1/3 of total replies
+function getHotChildren(arg: Argument): MergedItem[] {
+  const total = deepReplyCount(arg);
+  if (total < 10) return [];
+
+  const threshold = total / 3;
+  const hot: MergedItem[] = [];
+
+  for (const q of arg.questions) {
+    if (deepQuestionReplyCount(q) >= threshold) {
+      hot.push({ kind: "question", question: q });
+    }
+  }
+  for (const s of arg.supports) {
+    if (deepReplyCount(s) >= threshold) {
+      hot.push({ kind: "support", argument: s });
+    }
+  }
+  for (const c of arg.counters) {
+    if (deepReplyCount(c) >= threshold) {
+      hot.push({ kind: "counter", argument: c });
+    }
+  }
+
+  return hot;
+}
 import QuestionCard from "./QuestionCard";
 import PostForm from "./PostForm";
 
@@ -45,6 +78,17 @@ const kindBadge: Record<ArgumentKind, { label: string; color: "green" | "red" | 
   SUPPORT: { label: "Supporting", color: "green" },
   COUNTER: { label: "Counter", color: "red" },
   REPLY: { label: "Reply", color: "cyan" },
+};
+
+const tagColors: Record<string, "red" | "blue" | "green" | "orange" | "purple" | "cyan" | "yellow" | "pink"> = {
+  NEWS: "red",
+  TECH: "blue",
+  EDUCATION: "green",
+  POLITICS: "orange",
+  RELIGION: "purple",
+  GAMING: "cyan",
+  SPORTS: "yellow",
+  ENTERTAINMENT: "pink",
 };
 
 const formPlaceholders: Record<FormType, string> = {
@@ -126,6 +170,7 @@ export default function ArgumentCard({
   const badge = kindBadge[argument.kind];
   const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion };
   const totalChildren = argument.questions.length + argument.supports.length + argument.counters.length;
+  const hotChildren = argument.kind === "ROOT" ? getHotChildren(argument) : [];
 
   return (
     <Flex direction="column" gap="3">
@@ -170,6 +215,14 @@ export default function ArgumentCard({
               <Text size="1" color="gray">{argument.author.name}</Text>
               <Text size="1" color="gray">·</Text>
               <Text size="1" color="gray">{timeAgo(argument.createdAt)}</Text>
+              {argument.tag && (
+                <>
+                  <Text size="1" color="gray">·</Text>
+                  <Badge color={tagColors[argument.tag]} variant="outline" size="1">
+                    {argument.tag.charAt(0) + argument.tag.slice(1).toLowerCase()}
+                  </Badge>
+                </>
+              )}
             </Flex>
             <Text size="3">{argument.content}</Text>
             {argument.imageUrl && (
@@ -287,6 +340,20 @@ export default function ArgumentCard({
             onSubmit={handleFormSubmit}
             onCancel={() => setActiveForm(null)}
           />
+        </Box>
+      )}
+
+      {expanded === null && hotChildren.length > 0 && (
+        <Box pl="4" style={{ borderLeft: "2px solid var(--gray-6)" }}>
+          <Flex direction="column" gap="2">
+            {hotChildren.map((item) =>
+              item.kind === "question" ? (
+                <QuestionCard key={item.question.id} question={item.question} {...childProps} />
+              ) : (
+                <ArgumentCard key={item.argument.id} argument={item.argument} {...childProps} />
+              )
+            )}
+          </Flex>
         </Box>
       )}
 
