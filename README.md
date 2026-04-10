@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Truth Seeker
 
-## Getting Started
+Platform for honest truth-seeking engagements.
 
-First, run the development server:
+Post an argument. Question it, support it, or counter it. One point per post.
+
+## How it was built
+
+This project was created from scratch in half a day using [Claude Code](https://claude.ai/claude-code). All ideas, product decisions, and direction are mine — Claude wrote every single line of code.
+
+## Stack
+
+- **Framework**: Next.js 16 (App Router), React 19, TypeScript
+- **UI**: Radix Themes
+- **Database**: PostgreSQL (Neon)
+- **ORM**: Prisma
+- **Auth**: Auth.js v5 (Google OAuth + email/password)
+- **Object Storage**: Cloudflare R2 (S3-compatible)
+- **Hosting**: Vercel
+
+## Features
+
+- Post arguments tagged by topic (tech, politics, religion, etc.)
+- Question, support, or counter any argument — responses are themselves arguments that can be engaged with
+- Upvote/downvote everything
+- Image and GIF attachments
+- Collapsible threaded discussions with sort options
+- "Hot" replies auto-expand on popular posts
+- Topic sidebar for filtering
+- Email signup with 7-day verification, or Google OAuth
+- User settings (name + profile pic) for email users
+
+## Local development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Prerequisites: Node.js, pnpm, Docker
+
+# Start Postgres + MinIO
+pnpm db:up
+
+# Install dependencies
+pnpm install
+
+# Run migrations
+pnpm db:migrate
+
+# Seed sample data (optional)
+pnpm exec tsx prisma/seed.ts
+
+# Start dev server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env` and fill in the values.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deployed on Vercel + Neon + Cloudflare R2. See `.env.example` for required environment variables.

@@ -26,11 +26,11 @@ export default function ArgumentFeed() {
     refresh();
   }, [refresh]);
 
-  async function handlePost(content: string, imageUrl?: string) {
+  async function handlePost(content: string, imageUrl?: string, tag?: Tag) {
     await fetch("/api/arguments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, imageUrl, tag: selectedTag }),
+      body: JSON.stringify({ content, imageUrl, tag }),
     });
     setShowPostForm(false);
     refresh();
@@ -116,6 +116,7 @@ export default function ArgumentFeed() {
             <PostForm
               placeholder="Post an argument..."
               submitLabel="Post"
+              showTagPicker
               onSubmit={handlePost}
               onCancel={() => setShowPostForm(false)}
             />
