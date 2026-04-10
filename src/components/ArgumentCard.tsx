@@ -32,7 +32,7 @@ interface ArgumentCardProps {
 
 const kindBadge: Record<ArgumentKind, { label: string; color: "green" | "red" | "cyan" } | null> = {
   ROOT: null,
-  SUPPORT: { label: "Supporting", color: "green" },
+  SUPPORT: { label: "Support", color: "green" },
   COUNTER: { label: "Counter", color: "red" },
   REPLY: { label: "Reply", color: "cyan" },
 };
