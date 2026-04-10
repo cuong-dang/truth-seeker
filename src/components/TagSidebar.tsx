@@ -21,37 +21,78 @@ const tagColors: Record<Tag, "red" | "blue" | "green" | "orange" | "purple" | "c
 };
 
 export default function TagSidebar({ selectedTag, onSelectTag, tagCounts }: TagSidebarProps) {
+  const sorted = [...ALL_TAGS].sort();
+
   return (
-    <Flex direction="column" gap="2" style={{ minWidth: 200 }}>
-      <Text size="3" weight="medium" color="gray" mb="1">Topics</Text>
-      <Button
-        variant={selectedTag === null ? "solid" : "ghost"}
-        color="gray"
-        size="2"
-        style={{ justifyContent: "flex-start" }}
-        onClick={() => onSelectTag(null)}
+    <>
+      {/* Mobile: horizontal scrollable row */}
+      <Flex
+        gap="2"
+        align="center"
+        display={{ initial: "flex", md: "none" }}
+        style={{ overflowX: "auto", paddingBottom: 4 }}
       >
-        All topics
-      </Button>
-      {[...ALL_TAGS].sort().map((tag) => (
         <Button
-          key={tag}
-          variant={selectedTag === tag ? "solid" : "ghost"}
-          color={tagColors[tag]}
+          variant={selectedTag === null ? "solid" : "outline"}
+          color="gray"
+          size="1"
+          style={{ flexShrink: 0 }}
+          onClick={() => onSelectTag(null)}
+        >
+          All
+        </Button>
+        {sorted.map((tag) => (
+          <Button
+            key={tag}
+            variant={selectedTag === tag ? "solid" : "outline"}
+            color={tagColors[tag]}
+            size="1"
+            style={{ flexShrink: 0 }}
+            onClick={() => onSelectTag(selectedTag === tag ? null : tag)}
+          >
+            {tag.charAt(0) + tag.slice(1).toLowerCase()}
+            {tagCounts[tag] > 0 && ` (${tagCounts[tag]})`}
+          </Button>
+        ))}
+      </Flex>
+
+      {/* Desktop: vertical sidebar */}
+      <Flex
+        direction="column"
+        gap="2"
+        display={{ initial: "none", md: "flex" }}
+        style={{ minWidth: 200 }}
+      >
+        <Text size="3" weight="medium" color="gray" mb="1">Topics</Text>
+        <Button
+          variant={selectedTag === null ? "solid" : "ghost"}
+          color="gray"
           size="2"
           style={{ justifyContent: "flex-start" }}
-          onClick={() => onSelectTag(selectedTag === tag ? null : tag)}
+          onClick={() => onSelectTag(null)}
         >
-          <Flex justify="between" align="center" width="100%">
-            <Text size="2">{tag.charAt(0) + tag.slice(1).toLowerCase()}</Text>
-            {tagCounts[tag] > 0 && (
-              <Badge variant="soft" color={tagColors[tag]} size="1">
-                {tagCounts[tag]}
-              </Badge>
-            )}
-          </Flex>
+          All topics
         </Button>
-      ))}
-    </Flex>
+        {sorted.map((tag) => (
+          <Button
+            key={tag}
+            variant={selectedTag === tag ? "solid" : "ghost"}
+            color={tagColors[tag]}
+            size="2"
+            style={{ justifyContent: "flex-start" }}
+            onClick={() => onSelectTag(selectedTag === tag ? null : tag)}
+          >
+            <Flex justify="between" align="center" width="100%">
+              <Text size="2">{tag.charAt(0) + tag.slice(1).toLowerCase()}</Text>
+              {tagCounts[tag] > 0 && (
+                <Badge variant="soft" color={tagColors[tag]} size="1">
+                  {tagCounts[tag]}
+                </Badge>
+              )}
+            </Flex>
+          </Button>
+        ))}
+      </Flex>
+    </>
   );
 }

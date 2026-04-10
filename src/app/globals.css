@@ -5,3 +5,23 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* Hide user name on mobile */
+:root {
+  --display-name: none;
+}
+@media (min-width: 640px) {
+  :root {
+    --display-name: inline;
+  }
+}
+
+/* Thread nesting indentation — smaller on mobile */
+.thread-indent {
+  padding-left: 8px;
+}
+@media (min-width: 640px) {
+  .thread-indent {
+    padding-left: 16px;
+  }
+}

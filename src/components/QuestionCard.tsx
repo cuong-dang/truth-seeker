@@ -183,7 +183,7 @@ export default function QuestionCard({
       </Card>
 
       {showReplyForm && (
-        <Box pl="4">
+        <Box className="thread-indent">
           <PostForm
             placeholder="Write a reply..."
             submitLabel="Reply"
@@ -194,7 +194,7 @@ export default function QuestionCard({
       )}
 
       {effectiveRepliesExpanded && question.replies.length > 0 && (
-        <Box pl="4" style={{ borderLeft: "2px solid var(--cyan-6)" }}>
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--cyan-6)" }}>
           <Flex direction="column" gap="2">
             {sortReplies(question.replies, sortOrder).map((r) => (
               <ArgumentCard key={r.id} argument={r} {...childProps} />

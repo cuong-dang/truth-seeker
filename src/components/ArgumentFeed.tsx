@@ -103,7 +103,7 @@ export default function ArgumentFeed() {
   const isSignedIn = !!session?.user;
 
   return (
-    <Flex gap="6">
+    <Flex direction={{ initial: "column", md: "row" }} gap="6">
       <TagSidebar
         selectedTag={selectedTag}
         onSelectTag={setSelectedTag}

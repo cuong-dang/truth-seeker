@@ -4,20 +4,18 @@ import AuthButton from "@/components/AuthButton";
 
 export default function Home() {
   return (
-    <Container size="4" py="9" px="4">
-      <Flex gap="6">
-        <Flex direction="column" gap="6" flexGrow="1" style={{ minWidth: 0 }}>
-          <Flex justify="between" align="start">
-            <Flex direction="column" gap="1">
-              <Heading size="7">Truth Seeker</Heading>
-              <Text size="3" color="gray">
-                One point per post. Question it, support it, or counter it.
-              </Text>
-            </Flex>
-            <AuthButton />
+    <Container size="4" py="6" px="4">
+      <Flex direction="column" gap="6">
+        <Flex justify="between" align="start" wrap="wrap" gap="3">
+          <Flex direction="column" gap="1">
+            <Heading size={{ initial: "5", sm: "7" }}>Truth Seeker</Heading>
+            <Text size={{ initial: "2", sm: "3" }} color="gray">
+              One point per post. Question it, support it, or counter it.
+            </Text>
           </Flex>
-          <ArgumentFeed />
+          <AuthButton />
         </Flex>
+        <ArgumentFeed />
       </Flex>
     </Container>
   );

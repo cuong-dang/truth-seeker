@@ -329,7 +329,7 @@ export default function ArgumentCard({
       </Card>
 
       {activeForm && (
-        <Box pl="4">
+        <Box className="thread-indent">
           <PostForm
             placeholder={formPlaceholders[activeForm]}
             submitLabel="Submit"
@@ -346,7 +346,7 @@ export default function ArgumentCard({
               item.kind === "question" ? "var(--purple-6)" :
               item.kind === "support" ? "var(--green-6)" : "var(--red-6)";
             return (
-              <Box key={item.kind === "question" ? item.question.id : item.argument.id} pl="4" style={{ borderLeft: `2px solid ${borderColor}` }}>
+              <Box key={item.kind === "question" ? item.question.id : item.argument.id} className="thread-indent" style={{ borderLeft: `2px solid ${borderColor}` }}>
                 {item.kind === "question" ? (
                   <QuestionCard question={item.question} {...childProps} />
                 ) : (
@@ -365,7 +365,7 @@ export default function ArgumentCard({
               item.kind === "question" ? "var(--purple-6)" :
               item.kind === "support" ? "var(--green-6)" : "var(--red-6)";
             return (
-              <Box key={item.kind === "question" ? item.question.id : item.argument.id} pl="4" style={{ borderLeft: `2px solid ${borderColor}` }}>
+              <Box key={item.kind === "question" ? item.question.id : item.argument.id} className="thread-indent" style={{ borderLeft: `2px solid ${borderColor}` }}>
                 {item.kind === "question" ? (
                   <QuestionCard question={item.question} {...childProps} />
                 ) : (
@@ -378,7 +378,7 @@ export default function ArgumentCard({
       )}
 
       {effectiveExpanded === "questions" && argument.questions.length > 0 && (
-        <Box pl="4" style={{ borderLeft: "2px solid var(--purple-6)" }}>
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--purple-6)" }}>
           <Flex direction="column" gap="2">
             {sortQuestions(argument.questions, sortOrder).map((q) => (
               <QuestionCard key={q.id} question={q} {...childProps} />
@@ -388,7 +388,7 @@ export default function ArgumentCard({
       )}
 
       {effectiveExpanded === "supports" && argument.supports.length > 0 && (
-        <Box pl="4" style={{ borderLeft: "2px solid var(--green-6)" }}>
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--green-6)" }}>
           <Flex direction="column" gap="2">
             {sortArguments(argument.supports, sortOrder).map((s) => (
               <ArgumentCard key={s.id} argument={s} {...childProps} />
@@ -398,7 +398,7 @@ export default function ArgumentCard({
       )}
 
       {effectiveExpanded === "counters" && argument.counters.length > 0 && (
-        <Box pl="4" style={{ borderLeft: "2px solid var(--red-6)" }}>
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--red-6)" }}>
           <Flex direction="column" gap="2">
             {sortArguments(argument.counters, sortOrder).map((c) => (
               <ArgumentCard key={c.id} argument={c} {...childProps} />
@@ -410,7 +410,7 @@ export default function ArgumentCard({
       {effectiveExpanded === "nested" && (
         <Flex direction="column" gap="2">
           {argument.questions.length > 0 && (
-            <Box pl="4" style={{ borderLeft: "2px solid var(--purple-6)" }}>
+            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--purple-6)" }}>
               <Flex direction="column" gap="2">
                 {sortQuestions(argument.questions, sortOrder).map((q) => (
                   <QuestionCard key={q.id} question={q} {...childProps} />
@@ -419,7 +419,7 @@ export default function ArgumentCard({
             </Box>
           )}
           {argument.supports.length > 0 && (
-            <Box pl="4" style={{ borderLeft: "2px solid var(--green-6)" }}>
+            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--green-6)" }}>
               <Flex direction="column" gap="2">
                 {sortArguments(argument.supports, sortOrder).map((s) => (
                   <ArgumentCard key={s.id} argument={s} {...childProps} />
@@ -428,7 +428,7 @@ export default function ArgumentCard({
             </Box>
           )}
           {argument.counters.length > 0 && (
-            <Box pl="4" style={{ borderLeft: "2px solid var(--red-6)" }}>
+            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--red-6)" }}>
               <Flex direction="column" gap="2">
                 {sortArguments(argument.counters, sortOrder).map((c) => (
                   <ArgumentCard key={c.id} argument={c} {...childProps} />

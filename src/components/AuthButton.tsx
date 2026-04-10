@@ -11,10 +11,10 @@ export default function AuthButton() {
   if (!session) {
     return (
       <Flex gap="2">
-        <Button variant="outline" asChild>
+        <Button variant="outline" size={{ initial: "1", sm: "2" }} asChild>
           <a href="/login">Sign in</a>
         </Button>
-        <Button asChild>
+        <Button size={{ initial: "1", sm: "2" }} asChild>
           <a href="/signup">Sign up</a>
         </Button>
       </Flex>
@@ -32,7 +32,9 @@ export default function AuthButton() {
           src={session.user?.image ?? undefined}
           fallback={session.user?.name?.[0] ?? "?"}
         />
-        <Text size="2">{session.user?.name}</Text>
+        <Text size="2" style={{ display: "var(--display-name)" }}>
+          {session.user?.name}
+        </Text>
       </Flex>
       {isEmailUser && (
         <Link href="/settings" size="2">
