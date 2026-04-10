@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
+  Avatar, Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
 } from "@radix-ui/themes";
 import {
   CaretSortIcon, CheckCircledIcon, CrossCircledIcon, ListBulletIcon,
@@ -142,11 +142,20 @@ export default function ArgumentCard({
             </Flex>
           )}
           <Flex direction="column" gap="3" flexGrow="1">
-            {badge && (
-              <Badge color={badge.color} variant="soft" size="1" style={{ alignSelf: "flex-start" }}>
-                {badge.label}
-              </Badge>
-            )}
+            <Flex gap="2" align="center">
+              {badge && (
+                <Badge color={badge.color} variant="soft" size="1">
+                  {badge.label}
+                </Badge>
+              )}
+              <Avatar
+                size="1"
+                radius="full"
+                src={argument.author.image ?? undefined}
+                fallback={argument.author.name?.[0] ?? "?"}
+              />
+              <Text size="1" color="gray">{argument.author.name}</Text>
+            </Flex>
             <Text size="3">{argument.content}</Text>
             {argument.imageUrl && (
               <Box style={{ borderRadius: 6, overflow: "hidden", maxWidth: 400 }}>

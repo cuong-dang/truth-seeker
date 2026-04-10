@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
+  Avatar, Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
 } from "@radix-ui/themes";
 import {
   CaretSortIcon, ChatBubbleIcon, Pencil2Icon,
@@ -88,9 +88,18 @@ export default function QuestionCard({
             </Flex>
           )}
           <Flex direction="column" gap="2" flexGrow="1">
-            <Badge color="purple" variant="soft" size="1" style={{ alignSelf: "flex-start" }}>
-              Question
-            </Badge>
+            <Flex gap="2" align="center">
+              <Badge color="purple" variant="soft" size="1">
+                Question
+              </Badge>
+              <Avatar
+                size="1"
+                radius="full"
+                src={question.author.image ?? undefined}
+                fallback={question.author.name?.[0] ?? "?"}
+              />
+              <Text size="1" color="gray">{question.author.name}</Text>
+            </Flex>
             <Text size="2">{question.content}</Text>
             {question.imageUrl && (
               <Box style={{ borderRadius: 6, overflow: "hidden", maxWidth: 400 }}>
