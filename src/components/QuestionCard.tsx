@@ -35,6 +35,7 @@ type SortOrder = "votes" | "newest" | "oldest";
 interface QuestionCardProps {
   question: Question;
   isSignedIn: boolean;
+  expandAll?: boolean;
   onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
@@ -66,17 +67,19 @@ export default function QuestionCard({
   onAddReply,
   onVoteArgument,
   onVoteQuestion,
+  expandAll,
 }: QuestionCardProps) {
   const [repliesExpanded, setRepliesExpanded] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const effectiveRepliesExpanded = expandAll || repliesExpanded;
 
   function handleReplySubmit(content: string, imageUrl?: string) {
     onAddReply(question.id, content, imageUrl);
     setShowReplyForm(false);
   }
 
-  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion };
+  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion, expandAll };
 
   return (
     <Flex direction="column" gap="2">
@@ -131,7 +134,7 @@ export default function QuestionCard({
               <Flex gap="1" align="center">
                 <IconButton
                   size="1"
-                  variant={repliesExpanded ? "solid" : "ghost"}
+                  variant={effectiveRepliesExpanded ? "solid" : "ghost"}
                   color="cyan"
                   disabled={question.replies.length === 0}
                   onClick={() => setRepliesExpanded(!repliesExpanded)}
@@ -148,7 +151,7 @@ export default function QuestionCard({
                 </Flex>
               )}
 
-              {repliesExpanded && (
+              {effectiveRepliesExpanded && (
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
                     <Button variant="ghost" color="gray" size="1">
@@ -190,7 +193,7 @@ export default function QuestionCard({
         </Box>
       )}
 
-      {repliesExpanded && question.replies.length > 0 && (
+      {effectiveRepliesExpanded && question.replies.length > 0 && (
         <Box pl="4" style={{ borderLeft: "2px solid var(--cyan-6)" }}>
           <Flex direction="column" gap="2">
             {sortReplies(question.replies, sortOrder).map((r) => (

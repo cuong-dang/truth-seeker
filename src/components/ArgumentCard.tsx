@@ -5,7 +5,7 @@ import {
   Avatar, Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
 } from "@radix-ui/themes";
 import {
-  CaretSortIcon, ChatBubbleIcon, CheckCircledIcon, CrossCircledIcon, ListBulletIcon,
+  CaretSortIcon, ChatBubbleIcon, CheckCircledIcon, CrossCircledIcon,
   Pencil2Icon, QuestionMarkCircledIcon, ThickArrowDownIcon, ThickArrowUpIcon,
 } from "@radix-ui/react-icons";
 import type { Argument, ArgumentKind, Question } from "@/types/argument";
@@ -59,12 +59,13 @@ import QuestionCard from "./QuestionCard";
 import PostForm from "./PostForm";
 
 type FormType = "question" | "support" | "counter";
-type Section = "questions" | "supports" | "counters" | "all";
+type Section = "questions" | "supports" | "counters" | "all" | "nested";
 type SortOrder = "votes" | "newest" | "oldest";
 
 interface ArgumentCardProps {
   argument: Argument;
   isSignedIn: boolean;
+  expandAll?: boolean;
   onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
@@ -151,8 +152,10 @@ export default function ArgumentCard({
   onAddReply,
   onVoteArgument,
   onVoteQuestion,
+  expandAll,
 }: ArgumentCardProps) {
   const [expanded, setExpanded] = useState<Section | null>(null);
+  const effectiveExpanded = expandAll ? "nested" : expanded;
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [activeForm, setActiveForm] = useState<FormType | null>(null);
 
@@ -168,7 +171,7 @@ export default function ArgumentCard({
   }
 
   const badge = kindBadge[argument.kind];
-  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion };
+  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion, expandAll: effectiveExpanded === "nested" };
   const totalChildren = argument.questions.length + argument.supports.length + argument.counters.length;
   const hotChildren = argument.kind === "ROOT" ? getHotChildren(argument) : [];
 
@@ -274,24 +277,17 @@ export default function ArgumentCard({
               <Flex gap="1" align="center">
                 <IconButton
                   size="1"
-                  variant={expanded === "all" ? "solid" : "ghost"}
+                  variant={effectiveExpanded === "nested" ? "solid" : "ghost"}
                   color="gray"
-                  disabled={totalChildren === 0}
-                  onClick={() => toggleSection("all")}
+                  disabled={deepReplyCount(argument) === 0}
+                  onClick={() => toggleSection("nested")}
                 >
-                  <ListBulletIcon />
+                  <ChatBubbleIcon />
                 </IconButton>
-                <Text size="1" color="gray">{totalChildren}</Text>
+                <Text size="1" color="gray">{deepReplyCount(argument)}</Text>
               </Flex>
 
-              {deepReplyCount(argument) > 0 && (
-                <Flex gap="1" align="center">
-                  <ChatBubbleIcon width="14" height="14" color="var(--gray-9)" />
-                  <Text size="1" color="gray">{deepReplyCount(argument)} replies</Text>
-                </Flex>
-              )}
-
-              {expanded && (
+              {effectiveExpanded && (
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
                     <Button variant="ghost" color="gray" size="1">
@@ -343,35 +339,45 @@ export default function ArgumentCard({
         </Box>
       )}
 
-      {expanded === null && hotChildren.length > 0 && (
-        <Box pl="4" style={{ borderLeft: "2px solid var(--gray-6)" }}>
-          <Flex direction="column" gap="2">
-            {hotChildren.map((item) =>
-              item.kind === "question" ? (
-                <QuestionCard key={item.question.id} question={item.question} {...childProps} />
-              ) : (
-                <ArgumentCard key={item.argument.id} argument={item.argument} {...childProps} />
-              )
-            )}
-          </Flex>
-        </Box>
+      {effectiveExpanded === null && hotChildren.length > 0 && (
+        <Flex direction="column" gap="2">
+          {hotChildren.map((item) => {
+            const borderColor =
+              item.kind === "question" ? "var(--purple-6)" :
+              item.kind === "support" ? "var(--green-6)" : "var(--red-6)";
+            return (
+              <Box key={item.kind === "question" ? item.question.id : item.argument.id} pl="4" style={{ borderLeft: `2px solid ${borderColor}` }}>
+                {item.kind === "question" ? (
+                  <QuestionCard question={item.question} {...childProps} />
+                ) : (
+                  <ArgumentCard argument={item.argument} {...childProps} />
+                )}
+              </Box>
+            );
+          })}
+        </Flex>
       )}
 
-      {expanded === "all" && totalChildren > 0 && (
-        <Box pl="4" style={{ borderLeft: "2px solid var(--gray-6)" }}>
-          <Flex direction="column" gap="2">
-            {getMergedItems(argument, sortOrder).map((item) =>
-              item.kind === "question" ? (
-                <QuestionCard key={item.question.id} question={item.question} {...childProps} />
-              ) : (
-                <ArgumentCard key={item.argument.id} argument={item.argument} {...childProps} />
-              )
-            )}
-          </Flex>
-        </Box>
+      {effectiveExpanded === "all" && totalChildren > 0 && (
+        <Flex direction="column" gap="2">
+          {getMergedItems(argument, sortOrder).map((item) => {
+            const borderColor =
+              item.kind === "question" ? "var(--purple-6)" :
+              item.kind === "support" ? "var(--green-6)" : "var(--red-6)";
+            return (
+              <Box key={item.kind === "question" ? item.question.id : item.argument.id} pl="4" style={{ borderLeft: `2px solid ${borderColor}` }}>
+                {item.kind === "question" ? (
+                  <QuestionCard question={item.question} {...childProps} />
+                ) : (
+                  <ArgumentCard argument={item.argument} {...childProps} />
+                )}
+              </Box>
+            );
+          })}
+        </Flex>
       )}
 
-      {expanded === "questions" && argument.questions.length > 0 && (
+      {effectiveExpanded === "questions" && argument.questions.length > 0 && (
         <Box pl="4" style={{ borderLeft: "2px solid var(--purple-6)" }}>
           <Flex direction="column" gap="2">
             {sortQuestions(argument.questions, sortOrder).map((q) => (
@@ -381,7 +387,7 @@ export default function ArgumentCard({
         </Box>
       )}
 
-      {expanded === "supports" && argument.supports.length > 0 && (
+      {effectiveExpanded === "supports" && argument.supports.length > 0 && (
         <Box pl="4" style={{ borderLeft: "2px solid var(--green-6)" }}>
           <Flex direction="column" gap="2">
             {sortArguments(argument.supports, sortOrder).map((s) => (
@@ -391,7 +397,7 @@ export default function ArgumentCard({
         </Box>
       )}
 
-      {expanded === "counters" && argument.counters.length > 0 && (
+      {effectiveExpanded === "counters" && argument.counters.length > 0 && (
         <Box pl="4" style={{ borderLeft: "2px solid var(--red-6)" }}>
           <Flex direction="column" gap="2">
             {sortArguments(argument.counters, sortOrder).map((c) => (
@@ -399,6 +405,38 @@ export default function ArgumentCard({
             ))}
           </Flex>
         </Box>
+      )}
+
+      {effectiveExpanded === "nested" && (
+        <Flex direction="column" gap="2">
+          {argument.questions.length > 0 && (
+            <Box pl="4" style={{ borderLeft: "2px solid var(--purple-6)" }}>
+              <Flex direction="column" gap="2">
+                {sortQuestions(argument.questions, sortOrder).map((q) => (
+                  <QuestionCard key={q.id} question={q} {...childProps} />
+                ))}
+              </Flex>
+            </Box>
+          )}
+          {argument.supports.length > 0 && (
+            <Box pl="4" style={{ borderLeft: "2px solid var(--green-6)" }}>
+              <Flex direction="column" gap="2">
+                {sortArguments(argument.supports, sortOrder).map((s) => (
+                  <ArgumentCard key={s.id} argument={s} {...childProps} />
+                ))}
+              </Flex>
+            </Box>
+          )}
+          {argument.counters.length > 0 && (
+            <Box pl="4" style={{ borderLeft: "2px solid var(--red-6)" }}>
+              <Flex direction="column" gap="2">
+                {sortArguments(argument.counters, sortOrder).map((c) => (
+                  <ArgumentCard key={c.id} argument={c} {...childProps} />
+                ))}
+              </Flex>
+            </Box>
+          )}
+        </Flex>
       )}
     </Flex>
   );
