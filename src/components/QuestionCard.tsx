@@ -11,31 +11,15 @@ import {
 import type { Argument, Question } from "@/types/argument";
 import { timeAgo } from "@/lib/timeAgo";
 import ArgumentCard from "./ArgumentCard";
-
-function deepReplyCount(arg: Argument): number {
-  let count = arg.questions.length + arg.supports.length + arg.counters.length;
-  for (const q of arg.questions) {
-    count += q.replies.length;
-    for (const r of q.replies) count += deepReplyCount(r);
-  }
-  for (const s of arg.supports) count += deepReplyCount(s);
-  for (const c of arg.counters) count += deepReplyCount(c);
-  return count;
-}
-
-function deepQuestionReplyCount(question: Question): number {
-  let count = question.replies.length;
-  for (const r of question.replies) count += deepReplyCount(r);
-  return count;
-}
 import PostForm from "./PostForm";
 
 type SortOrder = "votes" | "newest" | "oldest";
 
+const PAGE_SIZE = 10;
+
 interface QuestionCardProps {
   question: Question;
   isSignedIn: boolean;
-  expandAll?: boolean;
   onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
@@ -67,19 +51,41 @@ export default function QuestionCard({
   onAddReply,
   onVoteArgument,
   onVoteQuestion,
-  expandAll,
 }: QuestionCardProps) {
   const [repliesExpanded, setRepliesExpanded] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const effectiveRepliesExpanded = expandAll || repliesExpanded;
+
+  // Lazy-loaded replies
+  const [loadedReplies, setLoadedReplies] = useState<Argument[]>([]);
+  const [repliesTotal, setRepliesTotal] = useState(question.replyCount);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  async function fetchReplies(skip: number) {
+    setLoadingReplies(true);
+    const res = await fetch(`/api/questions/${question.id}/children?skip=${skip}&limit=${PAGE_SIZE}`);
+    const data = await res.json();
+    setLoadedReplies((prev) => skip === 0 ? data.items : [...prev, ...data.items]);
+    setRepliesTotal(data.total);
+    setLoadingReplies(false);
+  }
+
+  function toggleReplies() {
+    if (repliesExpanded) {
+      setRepliesExpanded(false);
+    } else {
+      setRepliesExpanded(true);
+      if (loadedReplies.length === 0) fetchReplies(0);
+    }
+  }
 
   function handleReplySubmit(content: string, imageUrl?: string) {
     onAddReply(question.id, content, imageUrl);
     setShowReplyForm(false);
+    question.replyCount++;
+    if (repliesExpanded) fetchReplies(0);
   }
 
-  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion, expandAll };
+  const baseChildProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion };
 
   return (
     <Flex direction="column" gap="2">
@@ -109,7 +115,7 @@ export default function QuestionCard({
             </Flex>
           )}
           <Flex direction="column" gap="2" flexGrow="1">
-            <Flex gap="2" align="center">
+            <Flex gap="2" align="center" wrap="wrap">
               <Badge color="purple" variant="soft" size="1">
                 Question
               </Badge>
@@ -134,24 +140,17 @@ export default function QuestionCard({
               <Flex gap="1" align="center">
                 <IconButton
                   size="1"
-                  variant={effectiveRepliesExpanded ? "solid" : "ghost"}
+                  variant={repliesExpanded ? "solid" : "ghost"}
                   color="cyan"
-                  disabled={question.replies.length === 0}
-                  onClick={() => setRepliesExpanded(!repliesExpanded)}
+                  disabled={question.replyCount === 0}
+                  onClick={() => toggleReplies()}
                 >
                   <ChatBubbleIcon />
                 </IconButton>
-                <Text size="1" color="gray">{question.replies.length}</Text>
+                <Text size="1" color="gray">{repliesTotal}</Text>
               </Flex>
 
-              {deepQuestionReplyCount(question) > 0 && (
-                <Flex gap="1" align="center">
-                  <ChatBubbleIcon width="14" height="14" color="var(--gray-9)" />
-                  <Text size="1" color="gray">{deepQuestionReplyCount(question)} replies</Text>
-                </Flex>
-              )}
-
-              {effectiveRepliesExpanded && (
+              {repliesExpanded && (
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
                     <Button variant="ghost" color="gray" size="1">
@@ -193,12 +192,19 @@ export default function QuestionCard({
         </Box>
       )}
 
-      {effectiveRepliesExpanded && question.replies.length > 0 && (
+      {loadingReplies && <Text size="1" color="gray" ml="4">Loading...</Text>}
+
+      {repliesExpanded && loadedReplies.length > 0 && (
         <Box className="thread-indent" style={{ borderLeft: "2px solid var(--cyan-6)" }}>
           <Flex direction="column" gap="2">
-            {sortReplies(question.replies, sortOrder).map((r) => (
-              <ArgumentCard key={r.id} argument={r} {...childProps} />
+            {sortReplies(loadedReplies, sortOrder).map((r) => (
+              <ArgumentCard key={r.id} argument={r} {...baseChildProps} />
             ))}
+            {loadedReplies.length < repliesTotal && (
+              <Button variant="soft" color="gray" size="1" onClick={() => fetchReplies(loadedReplies.length)}>
+                Show more ({repliesTotal - loadedReplies.length} remaining)
+              </Button>
+            )}
           </Flex>
         </Box>
       )}

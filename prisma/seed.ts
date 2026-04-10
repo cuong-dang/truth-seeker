@@ -888,6 +888,105 @@ async function main() {
     { questionId: nucQ2.id }
   );
 
+  // ─── 11. Pineapple on pizza (12+ counters to test Show more) ─────
+  const pizza = await arg(
+    "Pineapple on pizza is objectively good because the sweetness balances the saltiness of the cheese and meat, creating a more complex flavor profile.",
+    emma.id,
+    "ROOT",
+    { tag: "ENTERTAINMENT" }
+  );
+
+  await arg("Hawaiian pizza was invented in Canada, not Hawaii. It's cultural appropriation of a tropical fruit for cheese-based propaganda.", marcus.id, "COUNTER", { parentId: pizza.id });
+  await arg("The moisture from pineapple makes the crust soggy. Texture matters as much as flavor.", sarah.id, "COUNTER", { parentId: pizza.id });
+  await arg("Italian chefs almost universally reject fruit on pizza. The people who invented pizza say no.", james.id, "COUNTER", { parentId: pizza.id });
+  await arg("If you need to add sugar to make your food taste good, the food isn't good.", priya.id, "COUNTER", { parentId: pizza.id });
+  await arg("Hot fruit is an abomination. Cooked pineapple has the texture of warm gummy bears.", david.id, "COUNTER", { parentId: pizza.id });
+  await arg("The caramelization of pineapple under broiler heat actually develops deep umami flavors that complement tomato sauce.", alice.id, "SUPPORT", { parentId: pizza.id });
+  await arg("Gordon Ramsay said pineapple doesn't belong on pizza. Case closed.", omar.id, "COUNTER", { parentId: pizza.id });
+  await arg("Gordon Ramsay also puts truffle oil on everything. Appeal to authority isn't an argument.", emma.id, "COUNTER", { parentId: pizza.id, imageUrl: urls.micDrop });
+  await arg("Sweet and savory is one of the most well-established flavor pairings in every cuisine. Think mango salsa, cranberry sauce, duck à l'orange.", alice.id, "SUPPORT", { parentId: pizza.id });
+  await arg("Those are all side dishes or sauces. Nobody is putting cranberry sauce AS the main topping.", marcus.id, "COUNTER", { parentId: pizza.id });
+  await arg("I tried it once to be open-minded. Never again.", david.id, "COUNTER", { parentId: pizza.id, imageUrl: urls.facepalm });
+  await arg("That's not an argument, that's an anecdote.", emma.id, "COUNTER", { parentId: pizza.id });
+  await arg("Domino's data shows Hawaiian is consistently in the top 5 most ordered pizzas globally. Millions of people vote with their wallets.", alice.id, "SUPPORT", { parentId: pizza.id });
+  await arg("Millions of people also watch reality TV. Popularity doesn't equal quality.", priya.id, "COUNTER", { parentId: pizza.id, imageUrl: urls.mindBlown });
+
+  // ─── 12. Tabs vs spaces (12+ questions to test Show more) ─────
+  const tabs = await arg(
+    "Tabs are objectively superior to spaces for indentation because they separate presentation from content — each developer can set their preferred width.",
+    david.id,
+    "ROOT",
+    { tag: "TECH" }
+  );
+
+  await q("What about alignment? Tabs can't align code to arbitrary columns.", alice.id, tabs.id);
+  await q("If everyone sees different widths, won't code reviews show inconsistent formatting?", marcus.id, tabs.id);
+  await q("What does the data say? Are most open source projects using tabs or spaces?", sarah.id, tabs.id);
+  await q("Doesn't this argument only matter for languages where indentation is significant, like Python?", james.id, tabs.id);
+  await q("Has anyone actually measured productivity differences between tabs and spaces users?", priya.id, tabs.id);
+  await q("What about mixed usage? Isn't the real problem when teams don't agree on one standard?", omar.id, tabs.id);
+  await q("If tabs are better, why did Google, Facebook, and Airbnb style guides all choose spaces?", emma.id, tabs.id);
+  await q("How do tabs work with languages that use indentation as syntax like Haskell?", alice.id, tabs.id);
+  await q("What accessibility benefits do tabs provide for visually impaired developers?", marcus.id, tabs.id);
+  await q("Aren't formatters like Prettier making this entire debate irrelevant?", sarah.id, tabs.id);
+  await q("If you have a team of 50 engineers, how do you enforce tab consistency?", james.id, tabs.id);
+  await q("What about the Stack Overflow study that showed spaces users earn more money?", priya.id, tabs.id, urls.exactlyCorrect);
+
+  await arg("Accessibility. Screen readers and braille displays work better with tabs because they represent a single semantic unit.", david.id, "SUPPORT", { parentId: tabs.id });
+  await arg("The Go programming language mandates tabs via gofmt. It's the most opinionated modern language and it chose tabs.", alice.id, "SUPPORT", { parentId: tabs.id });
+  await arg("Tabs take 1 byte vs 2-4 bytes for spaces. In large codebases this adds up to meaningful file size differences.", omar.id, "SUPPORT", { parentId: tabs.id });
+
+  // ─── 13. Gym culture (lots of supports to test Show more) ─────
+  const gym = await arg(
+    "Lifting heavy weights is the single most effective intervention for long-term health, surpassing cardio, diet changes, and sleep optimization when you can only pick one.",
+    marcus.id,
+    "ROOT",
+    { tag: "SPORTS" }
+  );
+
+  await arg("Resistance training is the only exercise that directly combats sarcopenia (age-related muscle loss), which is the #1 predictor of all-cause mortality in people over 65.", sarah.id, "SUPPORT", { parentId: gym.id });
+  await arg("Muscle is the largest glucose sink in the body. More muscle = better insulin sensitivity = lower diabetes risk. No amount of cardio compensates for lost muscle.", james.id, "SUPPORT", { parentId: gym.id });
+  await arg("Weight-bearing exercise increases bone density more effectively than any other intervention, including calcium supplements.", alice.id, "SUPPORT", { parentId: gym.id });
+  await arg("Dr. Peter Attia has said repeatedly that grip strength is the single strongest correlate with longevity. You get grip strength from lifting, not running.", david.id, "SUPPORT", { parentId: gym.id });
+  await arg("Lifting heavy triggers hormonal responses (testosterone, growth hormone, IGF-1) that cardio doesn't match. These hormones are protective against aging.", omar.id, "SUPPORT", { parentId: gym.id });
+  await arg("Meta-analyses show resistance training reduces anxiety and depression symptoms as effectively as SSRIs in mild-to-moderate cases.", emma.id, "SUPPORT", { parentId: gym.id });
+  await arg("Resting metabolic rate is directly proportional to lean mass. Lifting is the only way to sustainably increase daily calorie burn.", priya.id, "SUPPORT", { parentId: gym.id });
+  await arg("Fall prevention. Stronger legs and better balance from squats and deadlifts prevent the hip fractures that kill more elderly people than cancer.", sarah.id, "SUPPORT", { parentId: gym.id });
+  await arg("Joint health improves with properly loaded resistance training. The 'lifting destroys joints' myth has been debunked by every major orthopedic study.", marcus.id, "SUPPORT", { parentId: gym.id });
+  await arg("Cognitive benefits: resistance training increases BDNF (brain-derived neurotrophic factor) which is protective against Alzheimer's.", alice.id, "SUPPORT", { parentId: gym.id });
+  await arg("Even 2 sessions per week of 30 minutes produces 80% of the benefits. It's the most time-efficient exercise modality.", james.id, "SUPPORT", { parentId: gym.id });
+  await arg("Sleep quality improves more from resistance training than from cardio, according to a 2022 meta-analysis in Sleep Medicine Reviews.", david.id, "SUPPORT", { parentId: gym.id });
+
+  const gymQ1 = await q("If you can only do bodyweight exercises (no gym access), does this argument still hold?", priya.id, gym.id);
+  await arg("Progressive calisthenics (pistol squats, handstand pushups, front levers) can provide sufficient resistance for most health benefits, though maximal strength gains are limited.", marcus.id, "REPLY", { questionId: gymQ1.id });
+
+  await arg("VO2 max is a stronger predictor of all-cause mortality than muscle mass. Cardio wins on the most important metric.", emma.id, "COUNTER", { parentId: gym.id });
+  await arg("Injury risk from heavy lifting is non-trivial. A herniated disc or torn rotator cuff can set you back months. Cardio has a much better safety profile.", omar.id, "COUNTER", { parentId: gym.id });
+
+  // ─── 14. Remote school (extra root for infinite scroll) ─────
+  await arg(
+    "Online-only K-12 education should remain a permanent option because some students learn better without the social pressure and sensory overload of a physical classroom.",
+    sarah.id,
+    "ROOT",
+    { tag: "EDUCATION" }
+  );
+
+  // ─── 15. Microtransactions (extra root) ─────
+  await arg(
+    "Cosmetic-only microtransactions are ethically acceptable because they fund continued development without affecting gameplay fairness.",
+    david.id,
+    "ROOT",
+    { tag: "GAMING" }
+  );
+
+  // ─── 16. News paywalls (extra root) ─────
+  await arg(
+    "News paywalls are ultimately good for democracy because quality journalism requires funding, and ad-supported models incentivize clickbait over truth.",
+    emma.id,
+    "ROOT",
+    { tag: "NEWS" }
+  );
+
   // ─── Votes (make it feel lived-in) ─────────────
   const allArgs = await prisma.argument.findMany({ select: { id: true } });
   const allQs = await prisma.question.findMany({ select: { id: true } });

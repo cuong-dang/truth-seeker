@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Flex, Text } from "@radix-ui/themes";
 import type { Argument, Tag } from "@/types/argument";
@@ -8,23 +8,62 @@ import ArgumentCard from "./ArgumentCard";
 import TagSidebar from "./TagSidebar";
 import PostForm from "./PostForm";
 
+const PAGE_SIZE = 10;
+
 export default function ArgumentFeed() {
   const { data: session } = useSession();
   const [arguments_, setArguments] = useState<Argument[]>([]);
+  const [total, setTotal] = useState(0);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const refresh = useCallback(async () => {
-    const res = await fetch("/api/arguments");
+  const fetchPage = useCallback(async (skip: number, append: boolean) => {
+    const res = await fetch(`/api/arguments?skip=${skip}&limit=${PAGE_SIZE}`);
     const data = await res.json();
-    setArguments(data);
+    if (append) {
+      setArguments((prev) => [...prev, ...data.arguments]);
+    } else {
+      setArguments(data.arguments);
+    }
+    setTotal(data.total);
     setLoading(false);
+    setLoadingMore(false);
   }, []);
 
+  // Initial load
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    fetchPage(0, false);
+  }, [fetchPage]);
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && arguments_.length < total && !loadingMore) {
+          setLoadingMore(true);
+          fetchPage(arguments_.length, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [arguments_.length, total, loadingMore, fetchPage]);
+
+  // Refresh reloads everything currently loaded
+  const refresh = useCallback(async () => {
+    const res = await fetch(`/api/arguments?skip=0&limit=${Math.max(arguments_.length, PAGE_SIZE)}`);
+    const data = await res.json();
+    setArguments(data.arguments);
+    setTotal(data.total);
+  }, [arguments_.length]);
 
   async function handlePost(content: string, imageUrl?: string, tag?: Tag) {
     await fetch("/api/arguments", {
@@ -90,7 +129,7 @@ export default function ArgumentFeed() {
     refresh();
   }
 
-  // Compute tag counts from all root arguments
+  // Compute tag counts from loaded root arguments
   const tagCounts: Record<string, number> = {};
   for (const arg of arguments_) {
     if (arg.tag) tagCounts[arg.tag] = (tagCounts[arg.tag] || 0) + 1;
@@ -158,6 +197,12 @@ export default function ArgumentFeed() {
               />
             ))}
           </Flex>
+        )}
+
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} style={{ height: 1 }} />
+        {loadingMore && (
+          <Text size="2" color="gray" align="center">Loading more...</Text>
         )}
       </Flex>
     </Flex>

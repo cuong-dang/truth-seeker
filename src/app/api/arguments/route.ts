@@ -1,10 +1,13 @@
 import { auth } from "@/lib/auth";
-import { getArgumentTree, createRootArgument } from "@/lib/arguments";
+import { getRootArguments, createRootArgument } from "@/lib/arguments";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth();
-  const tree = await getArgumentTree(session?.user?.id);
-  return Response.json(tree);
+  const { searchParams } = new URL(request.url);
+  const skip = parseInt(searchParams.get("skip") || "0", 10);
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const result = await getRootArguments(session?.user?.id, skip, limit);
+  return Response.json(result);
 }
 
 export async function POST(request: Request) {

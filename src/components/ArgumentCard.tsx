@@ -10,62 +10,18 @@ import {
 } from "@radix-ui/react-icons";
 import type { Argument, ArgumentKind, Question } from "@/types/argument";
 import { timeAgo } from "@/lib/timeAgo";
-
-// Count all nested replies across the entire subtree
-function deepReplyCount(arg: Argument): number {
-  let count = arg.questions.length + arg.supports.length + arg.counters.length;
-  for (const q of arg.questions) {
-    count += q.replies.length;
-    for (const r of q.replies) count += deepReplyCount(r);
-  }
-  for (const s of arg.supports) count += deepReplyCount(s);
-  for (const c of arg.counters) count += deepReplyCount(c);
-  return count;
-}
-
-function deepQuestionReplyCount(q: Question): number {
-  let count = q.replies.length;
-  for (const r of q.replies) count += deepReplyCount(r);
-  return count;
-}
-
-// For root posts with >= 10 replies, find level-1 children with >= 1/3 of total replies
-function getHotChildren(arg: Argument): MergedItem[] {
-  const total = deepReplyCount(arg);
-  if (total < 10) return [];
-
-  const threshold = total / 3;
-  const hot: MergedItem[] = [];
-
-  for (const q of arg.questions) {
-    if (deepQuestionReplyCount(q) >= threshold) {
-      hot.push({ kind: "question", question: q });
-    }
-  }
-  for (const s of arg.supports) {
-    if (deepReplyCount(s) >= threshold) {
-      hot.push({ kind: "support", argument: s });
-    }
-  }
-  for (const c of arg.counters) {
-    if (deepReplyCount(c) >= threshold) {
-      hot.push({ kind: "counter", argument: c });
-    }
-  }
-
-  return hot;
-}
 import QuestionCard from "./QuestionCard";
 import PostForm from "./PostForm";
 
 type FormType = "question" | "support" | "counter";
-type Section = "questions" | "supports" | "counters" | "all" | "nested";
+type Section = "questions" | "supports" | "counters" | "nested";
 type SortOrder = "votes" | "newest" | "oldest";
+
+const PAGE_SIZE = 10;
 
 interface ArgumentCardProps {
   argument: Argument;
   isSignedIn: boolean;
-  expandAll?: boolean;
   onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
   onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
@@ -104,29 +60,6 @@ const sortLabels: Record<SortOrder, string> = {
   oldest: "Oldest first",
 };
 
-type MergedItem =
-  | { kind: "question"; question: Question }
-  | { kind: "support" | "counter"; argument: Argument };
-
-function getMergedItems(argument: Argument, sort: SortOrder): MergedItem[] {
-  const items: MergedItem[] = [
-    ...argument.questions.map((q) => ({ kind: "question" as const, question: q })),
-    ...argument.supports.map((a) => ({ kind: "support" as const, argument: a })),
-    ...argument.counters.map((a) => ({ kind: "counter" as const, argument: a })),
-  ];
-
-  const getScore = (item: MergedItem) =>
-    item.kind === "question" ? item.question.score : item.argument.score;
-  const getDate = (item: MergedItem) =>
-    item.kind === "question" ? item.question.createdAt : item.argument.createdAt;
-
-  return items.sort((a, b) => {
-    if (sort === "votes") return getScore(b) - getScore(a);
-    if (sort === "newest") return getDate(b).localeCompare(getDate(a));
-    return getDate(a).localeCompare(getDate(b));
-  });
-}
-
 function sortArguments(args: Argument[], sort: SortOrder): Argument[] {
   return [...args].sort((a, b) => {
     if (sort === "votes") return b.score - a.score;
@@ -152,28 +85,91 @@ export default function ArgumentCard({
   onAddReply,
   onVoteArgument,
   onVoteQuestion,
-  expandAll,
 }: ArgumentCardProps) {
   const [expanded, setExpanded] = useState<Section | null>(null);
-  const effectiveExpanded = expandAll ? "nested" : expanded;
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [activeForm, setActiveForm] = useState<FormType | null>(null);
 
-  function toggleSection(section: Section) {
-    setExpanded((prev) => (prev === section ? null : section));
+  // Lazy-loaded children (for individual section expand)
+  const [loadedQuestions, setLoadedQuestions] = useState<Question[]>([]);
+  const [loadedSupports, setLoadedSupports] = useState<Argument[]>([]);
+  const [loadedCounters, setLoadedCounters] = useState<Argument[]>([]);
+  const [questionsTotal, setQuestionsTotal] = useState(argument.questionCount);
+  const [supportsTotal, setSupportsTotal] = useState(argument.supportCount);
+  const [countersTotal, setCountersTotal] = useState(argument.counterCount);
+  const [loadingSection, setLoadingSection] = useState(false);
+
+  // Full tree (for nested/expand-all — single API call)
+  const [fullTree, setFullTree] = useState<Argument | null>(null);
+
+  async function fetchSection(section: "questions" | "supports" | "counters", skip: number) {
+    setLoadingSection(true);
+    const res = await fetch(`/api/arguments/${argument.id}/children?section=${section}&skip=${skip}&limit=${PAGE_SIZE}`);
+    const data = await res.json();
+    if (section === "questions") {
+      setLoadedQuestions((prev) => skip === 0 ? data.items : [...prev, ...data.items]);
+      setQuestionsTotal(data.total);
+    } else if (section === "supports") {
+      setLoadedSupports((prev) => skip === 0 ? data.items : [...prev, ...data.items]);
+      setSupportsTotal(data.total);
+    } else {
+      setLoadedCounters((prev) => skip === 0 ? data.items : [...prev, ...data.items]);
+      setCountersTotal(data.total);
+    }
+    setLoadingSection(false);
+  }
+
+  async function fetchFullTree() {
+    setLoadingSection(true);
+    const res = await fetch(`/api/arguments/${argument.id}/tree`);
+    const data = await res.json();
+    setFullTree(data);
+    setLoadingSection(false);
+  }
+
+  async function toggleSection(section: Section) {
+    if (expanded === section) {
+      setExpanded(null);
+      return;
+    }
+
+    setExpanded(section);
+
+    if (section === "nested") {
+      if (!fullTree) fetchFullTree();
+    } else {
+      const loaded = section === "questions" ? loadedQuestions : section === "supports" ? loadedSupports : loadedCounters;
+      if (loaded.length === 0) fetchSection(section, 0);
+    }
   }
 
   function handleFormSubmit(content: string, imageUrl?: string) {
-    if (activeForm === "question") onAddQuestion(argument.id, content, imageUrl);
-    else if (activeForm === "support") onAddSupport(argument.id, content, imageUrl);
-    else if (activeForm === "counter") onAddCounter(argument.id, content, imageUrl);
+    if (activeForm === "question") {
+      onAddQuestion(argument.id, content, imageUrl);
+      argument.questionCount++;
+      if (expanded === "questions") fetchSection("questions", 0);
+      if (expanded === "nested") fetchFullTree();
+    } else if (activeForm === "support") {
+      onAddSupport(argument.id, content, imageUrl);
+      argument.supportCount++;
+      if (expanded === "supports") fetchSection("supports", 0);
+      if (expanded === "nested") fetchFullTree();
+    } else if (activeForm === "counter") {
+      onAddCounter(argument.id, content, imageUrl);
+      argument.counterCount++;
+      if (expanded === "counters") fetchSection("counters", 0);
+      if (expanded === "nested") fetchFullTree();
+    }
     setActiveForm(null);
   }
 
   const badge = kindBadge[argument.kind];
-  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion, expandAll: effectiveExpanded === "nested" };
-  const totalChildren = argument.questions.length + argument.supports.length + argument.counters.length;
-  const hotChildren = argument.kind === "ROOT" ? getHotChildren(argument) : [];
+  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion };
+
+  // For nested view, use the full tree data (children already populated)
+  const nestedQuestions = fullTree?.questions ?? [];
+  const nestedSupports = fullTree?.supports ?? [];
+  const nestedCounters = fullTree?.counters ?? [];
 
   return (
     <Flex direction="column" gap="3">
@@ -203,7 +199,7 @@ export default function ArgumentCard({
             </Flex>
           )}
           <Flex direction="column" gap="3" flexGrow="1">
-            <Flex gap="2" align="center">
+            <Flex gap="2" align="center" wrap="wrap">
               {badge && (
                 <Badge color={badge.color} variant="soft" size="1">
                   {badge.label}
@@ -234,18 +230,18 @@ export default function ArgumentCard({
                 <img src={argument.imageUrl} alt="" style={{ width: "100%", display: "block" }} />
               </Box>
             )}
-            <Flex gap="4" align="center">
+            <Flex gap="4" align="center" wrap="wrap">
               <Flex gap="1" align="center">
                 <IconButton
                   size="1"
                   variant={expanded === "questions" ? "solid" : "ghost"}
                   color="purple"
-                  disabled={argument.questions.length === 0}
+                  disabled={argument.questionCount === 0}
                   onClick={() => toggleSection("questions")}
                 >
                   <QuestionMarkCircledIcon />
                 </IconButton>
-                <Text size="1" color="gray">{argument.questions.length}</Text>
+                <Text size="1" color="gray">{questionsTotal}</Text>
               </Flex>
 
               <Flex gap="1" align="center">
@@ -253,12 +249,12 @@ export default function ArgumentCard({
                   size="1"
                   variant={expanded === "supports" ? "solid" : "ghost"}
                   color="green"
-                  disabled={argument.supports.length === 0}
+                  disabled={argument.supportCount === 0}
                   onClick={() => toggleSection("supports")}
                 >
                   <CheckCircledIcon />
                 </IconButton>
-                <Text size="1" color="gray">{argument.supports.length}</Text>
+                <Text size="1" color="gray">{supportsTotal}</Text>
               </Flex>
 
               <Flex gap="1" align="center">
@@ -266,28 +262,28 @@ export default function ArgumentCard({
                   size="1"
                   variant={expanded === "counters" ? "solid" : "ghost"}
                   color="red"
-                  disabled={argument.counters.length === 0}
+                  disabled={argument.counterCount === 0}
                   onClick={() => toggleSection("counters")}
                 >
                   <CrossCircledIcon />
                 </IconButton>
-                <Text size="1" color="gray">{argument.counters.length}</Text>
+                <Text size="1" color="gray">{countersTotal}</Text>
               </Flex>
 
               <Flex gap="1" align="center">
                 <IconButton
                   size="1"
-                  variant={effectiveExpanded === "nested" ? "solid" : "ghost"}
+                  variant={expanded === "nested" ? "solid" : "ghost"}
                   color="gray"
-                  disabled={deepReplyCount(argument) === 0}
+                  disabled={argument.totalReplyCount === 0}
                   onClick={() => toggleSection("nested")}
                 >
                   <ChatBubbleIcon />
                 </IconButton>
-                <Text size="1" color="gray">{deepReplyCount(argument)}</Text>
+                <Text size="1" color="gray">{argument.totalReplyCount}</Text>
               </Flex>
 
-              {effectiveExpanded && (
+              {expanded && (
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
                     <Button variant="ghost" color="gray" size="1">
@@ -339,104 +335,301 @@ export default function ArgumentCard({
         </Box>
       )}
 
-      {effectiveExpanded === null && hotChildren.length > 0 && (
-        <Flex direction="column" gap="2">
-          {hotChildren.map((item) => {
-            const borderColor =
-              item.kind === "question" ? "var(--purple-6)" :
-              item.kind === "support" ? "var(--green-6)" : "var(--red-6)";
-            return (
-              <Box key={item.kind === "question" ? item.question.id : item.argument.id} className="thread-indent" style={{ borderLeft: `2px solid ${borderColor}` }}>
-                {item.kind === "question" ? (
-                  <QuestionCard question={item.question} {...childProps} />
-                ) : (
-                  <ArgumentCard argument={item.argument} {...childProps} />
-                )}
-              </Box>
-            );
-          })}
-        </Flex>
+      {loadingSection && <Text size="1" color="gray" ml="4">Loading...</Text>}
+
+      {/* Individual section views — lazy loaded, paginated */}
+      {expanded === "questions" && loadedQuestions.length > 0 && (
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--purple-6)" }}>
+          <Flex direction="column" gap="2">
+            {sortQuestions(loadedQuestions, sortOrder).map((q) => (
+              <QuestionCard key={q.id} question={q} {...childProps} />
+            ))}
+            {loadedQuestions.length < questionsTotal && (
+              <Button variant="soft" color="gray" size="1" onClick={() => fetchSection("questions", loadedQuestions.length)}>
+                Show more ({questionsTotal - loadedQuestions.length} remaining)
+              </Button>
+            )}
+          </Flex>
+        </Box>
       )}
 
-      {effectiveExpanded === "all" && totalChildren > 0 && (
-        <Flex direction="column" gap="2">
-          {getMergedItems(argument, sortOrder).map((item) => {
-            const borderColor =
-              item.kind === "question" ? "var(--purple-6)" :
-              item.kind === "support" ? "var(--green-6)" : "var(--red-6)";
-            return (
-              <Box key={item.kind === "question" ? item.question.id : item.argument.id} className="thread-indent" style={{ borderLeft: `2px solid ${borderColor}` }}>
-                {item.kind === "question" ? (
-                  <QuestionCard question={item.question} {...childProps} />
-                ) : (
-                  <ArgumentCard argument={item.argument} {...childProps} />
-                )}
-              </Box>
-            );
-          })}
-        </Flex>
+      {expanded === "supports" && loadedSupports.length > 0 && (
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--green-6)" }}>
+          <Flex direction="column" gap="2">
+            {sortArguments(loadedSupports, sortOrder).map((s) => (
+              <ArgumentCard key={s.id} argument={s} {...childProps} />
+            ))}
+            {loadedSupports.length < supportsTotal && (
+              <Button variant="soft" color="gray" size="1" onClick={() => fetchSection("supports", loadedSupports.length)}>
+                Show more ({supportsTotal - loadedSupports.length} remaining)
+              </Button>
+            )}
+          </Flex>
+        </Box>
       )}
 
-      {effectiveExpanded === "questions" && argument.questions.length > 0 && (
+      {expanded === "counters" && loadedCounters.length > 0 && (
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--red-6)" }}>
+          <Flex direction="column" gap="2">
+            {sortArguments(loadedCounters, sortOrder).map((c) => (
+              <ArgumentCard key={c.id} argument={c} {...childProps} />
+            ))}
+            {loadedCounters.length < countersTotal && (
+              <Button variant="soft" color="gray" size="1" onClick={() => fetchSection("counters", loadedCounters.length)}>
+                Show more ({countersTotal - loadedCounters.length} remaining)
+              </Button>
+            )}
+          </Flex>
+        </Box>
+      )}
+
+      {/* Nested view — full tree, single API call, everything expanded */}
+      {expanded === "nested" && fullTree && (
+        <Flex direction="column" gap="2">
+          {nestedQuestions.length > 0 && (
+            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--purple-6)" }}>
+              <Flex direction="column" gap="2">
+                {sortQuestions(nestedQuestions, sortOrder).map((q) => (
+                  <NestedQuestionCard key={q.id} question={q} sortOrder={sortOrder} {...childProps} />
+                ))}
+              </Flex>
+            </Box>
+          )}
+          {nestedSupports.length > 0 && (
+            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--green-6)" }}>
+              <Flex direction="column" gap="2">
+                {sortArguments(nestedSupports, sortOrder).map((s) => (
+                  <NestedArgumentCard key={s.id} argument={s} sortOrder={sortOrder} {...childProps} />
+                ))}
+              </Flex>
+            </Box>
+          )}
+          {nestedCounters.length > 0 && (
+            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--red-6)" }}>
+              <Flex direction="column" gap="2">
+                {sortArguments(nestedCounters, sortOrder).map((c) => (
+                  <NestedArgumentCard key={c.id} argument={c} sortOrder={sortOrder} {...childProps} />
+                ))}
+              </Flex>
+            </Box>
+          )}
+        </Flex>
+      )}
+    </Flex>
+  );
+}
+
+// ─── Nested view components (full tree already loaded) ───
+
+interface NestedChildProps {
+  isSignedIn: boolean;
+  onAddQuestion: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddSupport: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddCounter: (argumentId: string, content: string, imageUrl?: string) => void;
+  onAddReply: (questionId: string, content: string, imageUrl?: string) => void;
+  onVoteArgument: (argumentId: string, value: number) => void;
+  onVoteQuestion: (questionId: string, value: number) => void;
+}
+
+function NestedArgumentCard({
+  argument,
+  sortOrder,
+  isSignedIn,
+  onAddQuestion,
+  onAddSupport,
+  onAddCounter,
+  onAddReply,
+  onVoteArgument,
+  onVoteQuestion,
+}: { argument: Argument; sortOrder: SortOrder } & NestedChildProps) {
+  const [activeForm, setActiveForm] = useState<FormType | null>(null);
+  const badge = kindBadge[argument.kind];
+  const childProps = { isSignedIn, onAddQuestion, onAddSupport, onAddCounter, onAddReply, onVoteArgument, onVoteQuestion };
+
+  function handleFormSubmit(content: string, imageUrl?: string) {
+    if (activeForm === "question") onAddQuestion(argument.id, content, imageUrl);
+    else if (activeForm === "support") onAddSupport(argument.id, content, imageUrl);
+    else if (activeForm === "counter") onAddCounter(argument.id, content, imageUrl);
+    setActiveForm(null);
+  }
+
+  return (
+    <Flex direction="column" gap="2">
+      <Card>
+        <Flex gap="3">
+          {isSignedIn && (
+            <Flex direction="column" align="center" gap="0" style={{ minWidth: 32 }}>
+              <IconButton size="1" variant={argument.userVote === 1 ? "solid" : "ghost"} color="green" onClick={() => onVoteArgument(argument.id, 1)}>
+                <ThickArrowUpIcon />
+              </IconButton>
+              <Text size="2" weight="medium" color={argument.score > 0 ? "green" : argument.score < 0 ? "red" : "gray"}>
+                {argument.score}
+              </Text>
+              <IconButton size="1" variant={argument.userVote === -1 ? "solid" : "ghost"} color="red" onClick={() => onVoteArgument(argument.id, -1)}>
+                <ThickArrowDownIcon />
+              </IconButton>
+            </Flex>
+          )}
+          <Flex direction="column" gap="2" flexGrow="1">
+            <Flex gap="2" align="center" wrap="wrap">
+              {badge && <Badge color={badge.color} variant="soft" size="1">{badge.label}</Badge>}
+              <Avatar size="1" radius="full" src={argument.author.image ?? undefined} fallback={argument.author.name?.[0] ?? "?"} />
+              <Text size="1" color="gray">{argument.author.name}</Text>
+              <Text size="1" color="gray">·</Text>
+              <Text size="1" color="gray">{timeAgo(argument.createdAt)}</Text>
+            </Flex>
+            <Text size="3">{argument.content}</Text>
+            {argument.imageUrl && (
+              <Box style={{ borderRadius: 6, overflow: "hidden", maxWidth: 400 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={argument.imageUrl} alt="" style={{ width: "100%", display: "block" }} />
+              </Box>
+            )}
+            {isSignedIn && (
+              <Flex gap="4" align="center">
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger>
+                    <IconButton size="1" variant={activeForm ? "solid" : "ghost"} color="gray">
+                      <Pencil2Icon />
+                    </IconButton>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content size="1">
+                    <DropdownMenu.Item color="purple" onClick={() => setActiveForm("question")}>Question</DropdownMenu.Item>
+                    <DropdownMenu.Item color="green" onClick={() => setActiveForm("support")}>Support</DropdownMenu.Item>
+                    <DropdownMenu.Item color="red" onClick={() => setActiveForm("counter")}>Counter</DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              </Flex>
+            )}
+          </Flex>
+        </Flex>
+      </Card>
+
+      {activeForm && (
+        <Box className="thread-indent">
+          <PostForm
+            placeholder={formPlaceholders[activeForm]}
+            submitLabel="Submit"
+            onSubmit={handleFormSubmit}
+            onCancel={() => setActiveForm(null)}
+          />
+        </Box>
+      )}
+
+      {argument.questions.length > 0 && (
         <Box className="thread-indent" style={{ borderLeft: "2px solid var(--purple-6)" }}>
           <Flex direction="column" gap="2">
             {sortQuestions(argument.questions, sortOrder).map((q) => (
-              <QuestionCard key={q.id} question={q} {...childProps} />
+              <NestedQuestionCard key={q.id} question={q} sortOrder={sortOrder} {...childProps} />
             ))}
           </Flex>
         </Box>
       )}
-
-      {effectiveExpanded === "supports" && argument.supports.length > 0 && (
+      {argument.supports.length > 0 && (
         <Box className="thread-indent" style={{ borderLeft: "2px solid var(--green-6)" }}>
           <Flex direction="column" gap="2">
             {sortArguments(argument.supports, sortOrder).map((s) => (
-              <ArgumentCard key={s.id} argument={s} {...childProps} />
+              <NestedArgumentCard key={s.id} argument={s} sortOrder={sortOrder} {...childProps} />
             ))}
           </Flex>
         </Box>
       )}
-
-      {effectiveExpanded === "counters" && argument.counters.length > 0 && (
+      {argument.counters.length > 0 && (
         <Box className="thread-indent" style={{ borderLeft: "2px solid var(--red-6)" }}>
           <Flex direction="column" gap="2">
             {sortArguments(argument.counters, sortOrder).map((c) => (
-              <ArgumentCard key={c.id} argument={c} {...childProps} />
+              <NestedArgumentCard key={c.id} argument={c} sortOrder={sortOrder} {...childProps} />
             ))}
           </Flex>
         </Box>
       )}
+    </Flex>
+  );
+}
 
-      {effectiveExpanded === "nested" && (
-        <Flex direction="column" gap="2">
-          {argument.questions.length > 0 && (
-            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--purple-6)" }}>
-              <Flex direction="column" gap="2">
-                {sortQuestions(argument.questions, sortOrder).map((q) => (
-                  <QuestionCard key={q.id} question={q} {...childProps} />
-                ))}
-              </Flex>
-            </Box>
+function NestedQuestionCard({
+  question,
+  sortOrder,
+  isSignedIn,
+  onAddReply,
+  onVoteQuestion,
+  ...rest
+}: { question: Question; sortOrder: SortOrder } & NestedChildProps) {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const childProps = { isSignedIn, onAddReply, onVoteQuestion, ...rest };
+
+  function handleReplySubmit(content: string, imageUrl?: string) {
+    onAddReply(question.id, content, imageUrl);
+    setShowReplyForm(false);
+  }
+
+  return (
+    <Flex direction="column" gap="2">
+      <Card variant="surface">
+        <Flex gap="3">
+          {isSignedIn && (
+            <Flex direction="column" align="center" gap="0" style={{ minWidth: 32 }}>
+              <IconButton size="1" variant={question.userVote === 1 ? "solid" : "ghost"} color="green" onClick={() => onVoteQuestion(question.id, 1)}>
+                <ThickArrowUpIcon />
+              </IconButton>
+              <Text size="2" weight="medium" color={question.score > 0 ? "green" : question.score < 0 ? "red" : "gray"}>
+                {question.score}
+              </Text>
+              <IconButton size="1" variant={question.userVote === -1 ? "solid" : "ghost"} color="red" onClick={() => onVoteQuestion(question.id, -1)}>
+                <ThickArrowDownIcon />
+              </IconButton>
+            </Flex>
           )}
-          {argument.supports.length > 0 && (
-            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--green-6)" }}>
-              <Flex direction="column" gap="2">
-                {sortArguments(argument.supports, sortOrder).map((s) => (
-                  <ArgumentCard key={s.id} argument={s} {...childProps} />
-                ))}
+          <Flex direction="column" gap="2" flexGrow="1">
+            <Flex gap="2" align="center" wrap="wrap">
+              <Badge color="purple" variant="soft" size="1">Question</Badge>
+              <Avatar size="1" radius="full" src={question.author.image ?? undefined} fallback={question.author.name?.[0] ?? "?"} />
+              <Text size="1" color="gray">{question.author.name}</Text>
+              <Text size="1" color="gray">·</Text>
+              <Text size="1" color="gray">{timeAgo(question.createdAt)}</Text>
+            </Flex>
+            <Text size="2">{question.content}</Text>
+            {question.imageUrl && (
+              <Box style={{ borderRadius: 6, overflow: "hidden", maxWidth: 400 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={question.imageUrl} alt="" style={{ width: "100%", display: "block" }} />
+              </Box>
+            )}
+            {isSignedIn && (
+              <Flex gap="4" align="center">
+                <IconButton
+                  size="1"
+                  variant={showReplyForm ? "solid" : "ghost"}
+                  color="gray"
+                  onClick={() => setShowReplyForm(!showReplyForm)}
+                >
+                  <Pencil2Icon />
+                </IconButton>
               </Flex>
-            </Box>
-          )}
-          {argument.counters.length > 0 && (
-            <Box className="thread-indent" style={{ borderLeft: "2px solid var(--red-6)" }}>
-              <Flex direction="column" gap="2">
-                {sortArguments(argument.counters, sortOrder).map((c) => (
-                  <ArgumentCard key={c.id} argument={c} {...childProps} />
-                ))}
-              </Flex>
-            </Box>
-          )}
+            )}
+          </Flex>
         </Flex>
+      </Card>
+
+      {showReplyForm && (
+        <Box className="thread-indent">
+          <PostForm
+            placeholder="Write a reply..."
+            submitLabel="Reply"
+            onSubmit={handleReplySubmit}
+            onCancel={() => setShowReplyForm(false)}
+          />
+        </Box>
+      )}
+
+      {question.replies.length > 0 && (
+        <Box className="thread-indent" style={{ borderLeft: "2px solid var(--cyan-6)" }}>
+          <Flex direction="column" gap="2">
+            {sortArguments(question.replies, sortOrder).map((r) => (
+              <NestedArgumentCard key={r.id} argument={r} sortOrder={sortOrder} {...childProps} />
+            ))}
+          </Flex>
+        </Box>
       )}
     </Flex>
   );
