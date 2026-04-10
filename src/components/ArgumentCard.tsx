@@ -5,10 +5,22 @@ import {
   Avatar, Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text,
 } from "@radix-ui/themes";
 import {
-  CaretSortIcon, CheckCircledIcon, CrossCircledIcon, ListBulletIcon,
+  CaretSortIcon, ChatBubbleIcon, CheckCircledIcon, CrossCircledIcon, ListBulletIcon,
   Pencil2Icon, QuestionMarkCircledIcon, ThickArrowDownIcon, ThickArrowUpIcon,
 } from "@radix-ui/react-icons";
 import type { Argument, ArgumentKind, Question } from "@/types/argument";
+
+// Count all nested replies across the entire subtree
+function deepReplyCount(arg: Argument): number {
+  let count = arg.questions.length + arg.supports.length + arg.counters.length;
+  for (const q of arg.questions) {
+    count += q.replies.length;
+    for (const r of q.replies) count += deepReplyCount(r);
+  }
+  for (const s of arg.supports) count += deepReplyCount(s);
+  for (const c of arg.counters) count += deepReplyCount(c);
+  return count;
+}
 import QuestionCard from "./QuestionCard";
 import PostForm from "./PostForm";
 
@@ -215,6 +227,13 @@ export default function ArgumentCard({
                 </IconButton>
                 <Text size="1" color="gray">{totalChildren}</Text>
               </Flex>
+
+              {deepReplyCount(argument) > 0 && (
+                <Flex gap="1" align="center">
+                  <ChatBubbleIcon width="14" height="14" color="var(--gray-9)" />
+                  <Text size="1" color="gray">{deepReplyCount(argument)} replies</Text>
+                </Flex>
+              )}
 
               {expanded && (
                 <DropdownMenu.Root>

@@ -10,6 +10,23 @@ import {
 } from "@radix-ui/react-icons";
 import type { Argument, Question } from "@/types/argument";
 import ArgumentCard from "./ArgumentCard";
+
+function deepReplyCount(arg: Argument): number {
+  let count = arg.questions.length + arg.supports.length + arg.counters.length;
+  for (const q of arg.questions) {
+    count += q.replies.length;
+    for (const r of q.replies) count += deepReplyCount(r);
+  }
+  for (const s of arg.supports) count += deepReplyCount(s);
+  for (const c of arg.counters) count += deepReplyCount(c);
+  return count;
+}
+
+function deepQuestionReplyCount(question: Question): number {
+  let count = question.replies.length;
+  for (const r of question.replies) count += deepReplyCount(r);
+  return count;
+}
 import PostForm from "./PostForm";
 
 type SortOrder = "votes" | "newest" | "oldest";
@@ -120,6 +137,13 @@ export default function QuestionCard({
                 </IconButton>
                 <Text size="1" color="gray">{question.replies.length}</Text>
               </Flex>
+
+              {deepQuestionReplyCount(question) > 0 && (
+                <Flex gap="1" align="center">
+                  <ChatBubbleIcon width="14" height="14" color="var(--gray-9)" />
+                  <Text size="1" color="gray">{deepQuestionReplyCount(question)} replies</Text>
+                </Flex>
+              )}
 
               {repliesExpanded && (
                 <DropdownMenu.Root>
