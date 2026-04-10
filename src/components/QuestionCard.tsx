@@ -1,10 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, Box, Button, Card, Flex, IconButton, Text, TextArea } from "@radix-ui/themes";
-import { ThickArrowUpIcon, ThickArrowDownIcon } from "@radix-ui/react-icons";
-import type { Question } from "@/types/argument";
+import {
+  Badge, Box, Button, Card, DropdownMenu, Flex, IconButton, Text, TextArea,
+} from "@radix-ui/themes";
+import {
+  CaretSortIcon, ChatBubbleIcon, Pencil2Icon,
+  ThickArrowDownIcon, ThickArrowUpIcon,
+} from "@radix-ui/react-icons";
+import type { Argument, Question } from "@/types/argument";
 import ArgumentCard from "./ArgumentCard";
+
+type SortOrder = "votes" | "newest" | "oldest";
 
 interface QuestionCardProps {
   question: Question;
@@ -17,6 +24,20 @@ interface QuestionCardProps {
   onVoteQuestion: (questionId: string, value: number) => void;
 }
 
+const sortLabels: Record<SortOrder, string> = {
+  votes: "Top voted",
+  newest: "Newest first",
+  oldest: "Oldest first",
+};
+
+function sortReplies(replies: Argument[], sort: SortOrder): Argument[] {
+  return [...replies].sort((a, b) => {
+    if (sort === "votes") return b.score - a.score;
+    if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
+    return a.createdAt.localeCompare(b.createdAt);
+  });
+}
+
 export default function QuestionCard({
   question,
   isSignedIn,
@@ -27,6 +48,8 @@ export default function QuestionCard({
   onVoteArgument,
   onVoteQuestion,
 }: QuestionCardProps) {
+  const [repliesExpanded, setRepliesExpanded] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("oldest");
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -72,21 +95,50 @@ export default function QuestionCard({
               Question
             </Badge>
             <Text size="2">{question.content}</Text>
-            {isSignedIn && (
-              <Button
-                variant={showReplyForm ? "solid" : "outline"}
-                color="gray"
-                size="1"
-                style={{ alignSelf: "flex-start" }}
-                onClick={() => {
-                  setShowReplyForm(!showReplyForm);
-                  setDraft("");
-                }}
-              >
-                Reply
-                {question.replies.length > 0 && ` (${question.replies.length})`}
-              </Button>
-            )}
+            <Flex gap="4" align="center">
+              <Flex gap="1" align="center">
+                <IconButton
+                  size="1"
+                  variant={repliesExpanded ? "solid" : "ghost"}
+                  color="cyan"
+                  disabled={question.replies.length === 0}
+                  onClick={() => setRepliesExpanded(!repliesExpanded)}
+                >
+                  <ChatBubbleIcon />
+                </IconButton>
+                <Text size="1" color="gray">{question.replies.length}</Text>
+              </Flex>
+
+              {repliesExpanded && (
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger>
+                    <Button variant="ghost" color="gray" size="1">
+                      <CaretSortIcon />
+                      {sortLabels[sortOrder]}
+                    </Button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content size="1">
+                    <DropdownMenu.Item onClick={() => setSortOrder("votes")}>Top voted</DropdownMenu.Item>
+                    <DropdownMenu.Item onClick={() => setSortOrder("newest")}>Newest first</DropdownMenu.Item>
+                    <DropdownMenu.Item onClick={() => setSortOrder("oldest")}>Oldest first</DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              )}
+
+              {isSignedIn && (
+                <IconButton
+                  size="1"
+                  variant={showReplyForm ? "solid" : "ghost"}
+                  color="gray"
+                  onClick={() => {
+                    setShowReplyForm(!showReplyForm);
+                    setDraft("");
+                  }}
+                >
+                  <Pencil2Icon />
+                </IconButton>
+              )}
+            </Flex>
           </Flex>
         </Flex>
       </Card>
@@ -123,10 +175,10 @@ export default function QuestionCard({
         </Box>
       )}
 
-      {question.replies.length > 0 && (
+      {repliesExpanded && question.replies.length > 0 && (
         <Box pl="4" style={{ borderLeft: "2px solid var(--cyan-6)" }}>
           <Flex direction="column" gap="2">
-            {question.replies.map((r) => (
+            {sortReplies(question.replies, sortOrder).map((r) => (
               <ArgumentCard key={r.id} argument={r} {...childProps} />
             ))}
           </Flex>
